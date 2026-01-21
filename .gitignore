@@ -2,7 +2,7 @@
 
 # Plan files
 *.plan.md
-codewar_competition_platform_*.plan.md
+codewar_competition_platform.md/
 
 # Python
 __pycache__/

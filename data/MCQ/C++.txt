@@ -1,0 +1,197 @@
+﻿C++ – 20 Mediatory MCQs (Theory + Program
+Based)
+
+1. What is the output of the following code?
+int a = 5;
+cout << a++ << " " << ++a;
+
+A. 5 6
+B. 5 7
+C. 6 6
+D. 6 7
+
+Answer:B
+
+2. Why is a destructor made virtual in a base class?
+A. Faster execution
+B. Proper deletion of derived object
+C. Reduce memory usage
+D. Avoid syntax error
+
+Answer:B
+
+3. What will be the output?
+int a = 10;
+int &r = a;
+r = 20;
+cout << a;
+
+A. 10
+B. 20
+C. Garbage
+D. Compilation error
+
+Answer:B
+
+4. Which of the following best describes object slicing?
+A. Pointer mismatch
+B. Loss of derived class data
+C. Memory leak
+D. Runtime error
+
+Answer:B
+
+5. Output of the code?
+int x = 3;
+cout << sizeof(x++);
+
+A. 3
+B. 4
+C. 8
+D. Depends on compiler
+
+Answer:B
+
+
+6. What does nullptr ensure?
+A. Faster execution
+B. Type-safe null pointer
+C. Zero memory
+D. Garbage value
+
+Answer:B
+
+
+7. What is the output?
+static int x = 0;
+x++;
+cout << x;
+
+A. Always 1
+B. Always 0
+C. Increments each call
+D. Compilation error
+
+Answer:C
+
+8. Which function cannot be virtual?
+A. Destructor
+B. Constructor
+C. Member function
+D. Inline function
+
+Answer:B
+
+9. What happens if delete is not used for dynamically allocated memory?
+A. Compile error
+B. Runtime error
+C. Memory leak
+D. Program stops
+
+Answer:C
+
+10. Output of the program?
+int a = 5;
+int *p = &a;
+*p = 10;
+cout << a;
+
+A. 5
+B. 10
+C. Garbage
+D. Error
+
+Answer:B
+
+11. Why is vector faster than list for random access?
+A. Uses stack
+B. Contiguous memory
+C. Uses pointers
+D. Uses recursion
+
+Answer:B
+
+12. What is the use of mutable keyword?
+A. Change class design
+B. Modify data in const function
+C. Avoid constructor
+D. Speed improvement
+
+Answer:B
+
+13. What will be the output?
+int a = 10;
+const int *p = &a;
+a = 20;
+cout << *p;
+
+A. 10
+B. 20
+C. Error
+D. Undefined
+
+Answer:B
+
+14. Which supports runtime polymorphism?
+A. Overloading
+B. Templates
+C. Virtual functions
+D. Inline
+
+Answer:C
+
+15. Output of the code?
+int arr[5];
+cout << sizeof(arr)/sizeof(arr[0]);
+
+A. 4
+B. 5
+C. 8
+D. Depends
+
+Answer:B
+
+16. What is dangling pointer?
+A. Null pointer
+B. Pointer to constant
+C. Pointer to deallocated memory
+D. Wild pointer
+
+Answer:C
+
+17. What happens when delete[] is replaced by delete?
+A. Safe
+B. Only memory leak
+C. Undefined behavior
+D. No effect
+
+Answer:C
+
+18. What will be output?
+int a = 5;
+int b = a;
+b = 10;
+cout << a;
+
+A. 5
+B. 10
+C. Garbage
+D. Error
+
+Answer:A
+
+19. Why explicit constructor is used?
+A. Speed
+B. Avoid implicit conversion
+C. Inheritance
+D. Polymorphism
+
+Answer:B
+
+20. What is Rule of Zero?
+A. No constructors
+B. No pointers
+C. Compiler manages resources
+D. No class
+
+Answer:C

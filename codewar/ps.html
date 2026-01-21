@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Problem Statement Round - CodeWar</title>
+  <link rel="stylesheet" href="css/codewar.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Round 3: Problem Statement</h1>
+      <div class="question-header">
+        <span class="timer-display" id="timer">60:00</span>
+        <span class="question-number">Problem <span id="current-p">1</span> of <span id="total-p">5</span></span>
+      </div>
+    </div>
+
+    <div id="ps-container">
+      <div class="question-list" id="problem-nav"></div>
+
+      <div class="question-container">
+        <div class="question-header">
+          <h2 id="problem-title"></h2>
+        </div>
+        <div class="question-text" id="problem-description"></div>
+        <div style="background: var(--bg-primary); padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <strong style="color: var(--accent-cyan);">Constraints:</strong>
+          <p id="problem-constraints" style="margin-top: 5px;"></p>
+        </div>
+
+        <div style="margin-top: 30px;">
+          <h3>Your Solution</h3>
+          <p style="color: var(--text-secondary); margin-bottom: 10px;">
+            Write your solution code below. You can use an external IDE if needed.
+          </p>
+          <textarea class="code-editor" id="solution-code" placeholder="Write your solution here..."></textarea>
+        </div>
+
+        <div style="margin-top: 20px;">
+          <button class="btn" onclick="runTestCases()">Run Test Cases</button>
+          <button class="btn btn-secondary" onclick="saveSolution()">Save Progress</button>
+        </div>
+
+        <div id="test-results" style="margin-top: 30px; display: none;">
+          <h3>Test Case Results</h3>
+          <div id="test-cases-list"></div>
+          <div id="test-summary" style="margin-top: 20px; padding: 20px; background: var(--bg-secondary); border-radius: 5px;"></div>
+        </div>
+      </div>
+
+      <div class="navigation">
+        <button class="btn btn-secondary" onclick="previousProblem()" id="prev-btn">Previous</button>
+        <button class="btn" onclick="nextProblem()" id="next-btn">Next</button>
+        <button class="btn btn-danger" onclick="submitPS()" id="submit-btn">Submit Round</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/utils.js?v=2"></script>
+  <script src="js/storage.js?v=2"></script>
+  <script src="js/auth.js?v=2"></script>
+  <script src="js/timer.js?v=2"></script>
+  <script src="js/anti_cheat.js?v=2"></script>
+  <script src="js/code_verifier.js?v=2"></script>
+  <script src="js/data.js?v=2"></script>
+  <script>
+    let problems = [];
+    let currentProblemIndex = 0;
+    let solutions = {};
+    let roundTimer = null;
+    let antiCheat = null;
+
+    // Check authentication and round access
+    if (!requireAuth()) {
+      // Redirect handled
+    } else {
+      const currentRound = StorageManager.getCurrentRound();
+      const debugScore = StorageManager.getDebugScore();
+      
+      // Allow if Debug is completed OR already in ps/completed
+      if (!debugScore && currentRound !== 'ps' && currentRound !== 'completed') {
+        alert('Please complete Debug round first');
+        window.location.href = 'index.html';
+      } else {
+        initializePS();
+      }
+    }
+
+    function initializePS() {
+      // Initialize limited anti-cheat (no focus lock)
+      if (typeof initAntiCheat !== 'undefined') {
+        antiCheat = initAntiCheat(false);
+        if (antiCheat) {
+          antiCheat.disableForPS();
+        }
+      }
+
+      // Get language from MCQ round
+      const language = StorageManager.getLanguageChoice();
+      if (!language) {
+        alert('Language not selected. Redirecting to MCQ round.');
+        window.location.href = 'mcq.html';
+        return;
+      }
+
+      loadProblems(language);
+    }
+
+    function loadProblems(language) {
+      try {
+        // Check if CodeWarData is available
+        if (typeof CodeWarData === 'undefined' || !CodeWarData.ps) {
+          alert('Error: Problem data not loaded. Please refresh the page.');
+          window.location.href = 'index.html';
+          return;
+        }
+
+        problems = CodeWarData.ps || [];
+        
+        if (problems.length === 0) {
+          alert('No problems available');
+          window.location.href = 'index.html';
+          return;
+        }
+
+        // Load saved solutions
+        const savedSolution = StorageManager.getPSSolution();
+        if (savedSolution) {
+          try {
+            solutions = JSON.parse(savedSolution);
+          } catch (e) {
+            solutions = {};
+          }
+        }
+        
+        // Render problem navigation
+        renderProblemNavigation();
+        
+        // Start timer
+        startTimer();
+        
+        // Display first problem
+        displayProblem(0);
+      } catch (error) {
+        console.error('Error loading problems:', error);
+        alert('An error occurred while loading problems. Please refresh the page.');
+        window.location.href = 'index.html';
+      }
+    }
+
+    function renderProblemNavigation() {
+      const navEl = document.getElementById('problem-nav');
+      navEl.innerHTML = '';
+      problems.forEach((p, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'question-number-btn';
+        btn.textContent = index + 1;
+        btn.onclick = () => displayProblem(index);
+        if (solutions[p.id]) {
+          btn.classList.add('answered');
+        }
+        if (index === currentProblemIndex) {
+          btn.classList.add('current');
+        }
+        navEl.appendChild(btn);
+      });
+      document.getElementById('total-p').textContent = problems.length;
+    }
+
+    function displayProblem(index) {
+      if (index < 0 || index >= problems.length) {
+        console.error('Invalid problem index:', index);
+        return;
+      }
+
+      currentProblemIndex = index;
+      const problem = problems[index];
+      
+      if (!problem) {
+        console.error('Problem not found at index:', index);
+        return;
+      }
+      
+      document.getElementById('current-p').textContent = index + 1;
+      document.getElementById('problem-title').textContent = problem.title || 'Problem';
+      document.getElementById('problem-description').textContent = problem.description || 'No description available';
+      document.getElementById('problem-constraints').textContent = problem.constraints || 'No constraints specified';
+      
+      // Load saved solution
+      const savedSolution = solutions[problem.id] || '';
+      document.getElementById('solution-code').value = savedSolution;
+      
+      // Hide test results
+      document.getElementById('test-results').style.display = 'none';
+      
+      // Update navigation buttons
+      document.getElementById('prev-btn').disabled = index === 0;
+      document.getElementById('next-btn').disabled = index === problems.length - 1;
+      
+      // Update problem navigation
+      renderProblemNavigation();
+    }
+
+    function saveSolution() {
+      try {
+        if (currentProblemIndex < 0 || currentProblemIndex >= problems.length) {
+          alert('Invalid problem');
+          return;
+        }
+
+        const problem = problems[currentProblemIndex];
+        if (!problem || !problem.id) {
+          alert('Problem not found');
+          return;
+        }
+
+        const solution = document.getElementById('solution-code').value;
+        solutions[problem.id] = solution;
+        StorageManager.setPSSolution(JSON.stringify(solutions));
+        alert('Solution saved!');
+      } catch (error) {
+        console.error('Error saving solution:', error);
+        alert('Error saving solution. Please try again.');
+      }
+    }
+
+    function runTestCases() {
+      const problem = problems[currentProblemIndex];
+      const userCode = document.getElementById('solution-code').value.trim();
+      
+      if (!userCode) {
+        alert('Please write your solution first');
+        return;
+      }
+
+      // Get language
+      const language = StorageManager.getLanguageChoice();
+      const langMap = { c: 'c', cpp: 'cpp', java: 'java', python: 'python' };
+      const langKey = langMap[language] || 'c';
+      
+      // Get test cases for this language
+      const testCases = (problem.testCases && problem.testCases[langKey]) ? problem.testCases[langKey] : [];
+      
+      if (testCases.length === 0) {
+        alert('No test cases available for this language');
+        return;
+      }
+
+      // Verify code
+      const verifier = new CodeVerifier(langKey);
+      const results = verifier.verifyCode(userCode, testCases);
+      const summary = verifier.getSummary(results);
+
+      // Display results
+      displayTestResults(results, summary);
+      
+      // Save solution
+      saveSolution();
+    }
+
+    function displayTestResults(results, summary) {
+      const resultsEl = document.getElementById('test-results');
+      const listEl = document.getElementById('test-cases-list');
+      const summaryEl = document.getElementById('test-summary');
+      
+      resultsEl.style.display = 'block';
+      
+      // Display individual test cases
+      listEl.innerHTML = '';
+      results.forEach(result => {
+        const testCaseEl = document.createElement('div');
+        testCaseEl.className = `test-case ${result.passed ? 'passed' : 'failed'}`;
+        testCaseEl.innerHTML = `
+          <div class="test-case-header">
+            <strong>Test Case ${result.testCase}</strong>
+            <span class="test-case-status ${result.passed ? 'passed' : 'failed'}">
+              ${result.passed ? 'PASSED' : 'FAILED'}
+            </span>
+          </div>
+          <div style="margin-top: 10px;">
+            <p><strong>Input:</strong> ${result.input}</p>
+            <p><strong>Expected:</strong> ${result.expected}</p>
+            <p><strong>Your Output:</strong> ${result.actual}</p>
+          </div>
+        `;
+        listEl.appendChild(testCaseEl);
+      });
+      
+      // Display summary
+      summaryEl.innerHTML = `
+        <h3 style="color: var(--accent-cyan);">Summary</h3>
+        <p><strong>Total Test Cases:</strong> ${summary.total}</p>
+        <p><strong>Passed:</strong> <span style="color: var(--accent-green);">${summary.passed}</span></p>
+        <p><strong>Failed:</strong> <span style="color: var(--accent-red);">${summary.failed}</span></p>
+        <p><strong>Score:</strong> ${summary.percentage}%</p>
+      `;
+    }
+
+    function previousProblem() {
+      if (currentProblemIndex > 0) {
+        displayProblem(currentProblemIndex - 1);
+      }
+    }
+
+    function nextProblem() {
+      if (currentProblemIndex < problems.length - 1) {
+        displayProblem(currentProblemIndex + 1);
+      }
+    }
+
+    function startTimer() {
+      roundTimer = new RoundTimer('ps', ROUND_DURATIONS.ps);
+      roundTimer.start((expired, remaining) => {
+        if (expired) {
+          submitPS(true);
+        } else {
+          const timeEl = document.getElementById('timer');
+          timeEl.textContent = roundTimer.getFormattedTime();
+          if (remaining <= 300) {
+            timeEl.classList.add('timer-warning');
+          }
+        }
+      });
+    }
+
+    function submitPS(autoSubmit = false) {
+      if (!autoSubmit && !confirm('Are you sure you want to submit? You cannot change solutions after submission.')) {
+        return;
+      }
+
+      roundTimer.stop();
+      if (antiCheat) antiCheat.stop();
+
+      // Calculate total score from test cases
+      const language = StorageManager.getLanguageChoice();
+      const langMap = { c: 'c', cpp: 'cpp', java: 'java', python: 'python' };
+      const langKey = langMap[language] || 'c';
+      
+      let totalPassed = 0;
+      let totalTests = 0;
+      
+      problems.forEach(problem => {
+        if (!problem || !problem.id) return;
+        const solution = solutions[problem.id] || '';
+        if (solution) {
+          const testCases = (problem.testCases && problem.testCases[langKey]) ? problem.testCases[langKey] : [];
+          if (testCases.length > 0) {
+            try {
+              const verifier = new CodeVerifier(langKey);
+              const results = verifier.verifyCode(solution, testCases);
+              if (results && Array.isArray(results)) {
+                totalPassed += results.filter(r => r && r.passed).length;
+                totalTests += results.length;
+              }
+            } catch (e) {
+              console.error('Error verifying code for problem', problem.id, e);
+            }
+          }
+        }
+      });
+      
+      const score = totalTests > 0 ? Math.max(0, Math.min(100, Math.round((totalPassed / totalTests) * 100))) : 0;
+      StorageManager.setPSScore(score);
+      StorageManager.setCurrentRound('completed');
+      
+      if (autoSubmit) {
+        alert('Time expired! Your solutions have been submitted automatically.');
+      }
+      
+      window.location.href = 'results.html';
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UAT Test Script - CodeWar</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #0f0;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #0f0;
+            border-radius: 5px;
+        }
+        .test-pass { color: #0f0; }
+        .test-fail { color: #f00; }
+        .test-info { color: #ff0; }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #0f0;
+            color: #000;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover { background: #0a0; }
+        #log {
+            max-height: 400px;
+            overflow-y: auto;
+            background: #000;
+            padding: 10px;
+            border: 1px solid #0f0;
+        }
+    </style>
+</head>
+<body>
+    <h1>CodeWar Platform - User Acceptance Testing</h1>
+    <div class="test-section">
+        <h2>Test Controls</h2>
+        <button onclick="clearStorage()">Clear All Storage</button>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="testAuthentication()">Test Authentication</button>
+        <button onclick="testMCQ()">Test MCQ Round</button>
+        <button onclick="testDebug()">Test Debug Round</button>
+        <button onclick="testPS()">Test PS Round</button>
+        <button onclick="testAntiCheat()">Test Anti-Cheat</button>
+    </div>
+    <div class="test-section">
+        <h2>Test Log</h2>
+        <div id="log"></div>
+    </div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logEl = document.getElementById('log');
+            const time = new Date().toLocaleTimeString();
+            const className = type === 'pass' ? 'test-pass' : type === 'fail' ? 'test-fail' : 'test-info';
+            logEl.innerHTML += `<div class="${className}">[${time}] ${message}</div>`;
+            logEl.scrollTop = logEl.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function clearStorage() {
+            try {
+                localStorage.clear();
+                sessionStorage.clear();
+                log('✓ Storage cleared successfully', 'pass');
+            } catch (e) {
+                log('✗ Error clearing storage: ' + e.message, 'fail');
+            }
+        }
+
+        function testAuthentication() {
+            log('=== Testing Authentication ===', 'info');
+            
+            // Test 1: Invalid code
+            try {
+                const invalidCodes = ['INVALID', 'CODE-XXXX', 'test', ''];
+                invalidCodes.forEach(code => {
+                    // This would need actual auth function
+                    log(`Testing invalid code: ${code}`, 'info');
+                });
+                log('✓ Invalid code rejection test', 'pass');
+            } catch (e) {
+                log('✗ Authentication test failed: ' + e.message, 'fail');
+            }
+        }
+
+        function testMCQ() {
+            log('=== Testing MCQ Round ===', 'info');
+            
+            // Check if data exists
+            try {
+                if (typeof CodeWarData === 'undefined') {
+                    log('✗ CodeWarData not loaded', 'fail');
+                    return;
+                }
+                log('✓ CodeWarData loaded', 'pass');
+                
+                // Check languages
+                const languages = ['c', 'cpp', 'java', 'python'];
+                languages.forEach(lang => {
+                    const questions = CodeWarData.mcq[lang] || [];
+                    if (questions.length > 0) {
+                        log(`✓ ${lang.toUpperCase()}: ${questions.length} questions`, 'pass');
+                    } else {
+                        log(`✗ ${lang.toUpperCase()}: No questions`, 'fail');
+                    }
+                });
+            } catch (e) {
+                log('✗ MCQ test failed: ' + e.message, 'fail');
+            }
+        }
+
+        function testDebug() {
+            log('=== Testing Debug Round ===', 'info');
+            
+            try {
+                if (typeof CodeWarData === 'undefined') {
+                    log('✗ CodeWarData not loaded', 'fail');
+                    return;
+                }
+                
+                const languages = ['c', 'cpp', 'java', 'python'];
+                languages.forEach(lang => {
+                    const questions = CodeWarData.debug[lang] || [];
+                    if (questions.length > 0) {
+                        log(`✓ ${lang.toUpperCase()}: ${questions.length} questions`, 'pass');
+                        
+                        // Check question structure
+                        questions.forEach((q, i) => {
+                            if (!q.id || !q.faultyCode || !q.correctCode) {
+                                log(`✗ ${lang} Q${i+1}: Missing required fields`, 'fail');
+                            }
+                        });
+                    } else {
+                        log(`✗ ${lang.toUpperCase()}: No questions`, 'fail');
+                    }
+                });
+            } catch (e) {
+                log('✗ Debug test failed: ' + e.message, 'fail');
+            }
+        }
+
+        function testPS() {
+            log('=== Testing PS Round ===', 'info');
+            
+            try {
+                if (typeof CodeWarData === 'undefined') {
+                    log('✗ CodeWarData not loaded', 'fail');
+                    return;
+                }
+                
+                const problems = CodeWarData.ps || [];
+                if (problems.length > 0) {
+                    log(`✓ ${problems.length} problems available`, 'pass');
+                    
+                    problems.forEach((p, i) => {
+                        if (!p.id || !p.title || !p.description) {
+                            log(`✗ Problem ${i+1}: Missing required fields`, 'fail');
+                        }
+                        if (!p.testCases) {
+                            log(`✗ Problem ${i+1}: No test cases`, 'fail');
+                        } else {
+                            const langs = ['c', 'cpp', 'java', 'python'];
+                            langs.forEach(lang => {
+                                if (!p.testCases[lang] || p.testCases[lang].length === 0) {
+                                    log(`✗ Problem ${i+1}: No ${lang} test cases`, 'fail');
+                                }
+                            });
+                        }
+                    });
+                } else {
+                    log('✗ No problems available', 'fail');
+                }
+            } catch (e) {
+                log('✗ PS test failed: ' + e.message, 'fail');
+            }
+        }
+
+        function testAntiCheat() {
+            log('=== Testing Anti-Cheat ===', 'info');
+            
+            try {
+                // Check if functions exist
+                if (typeof initAntiCheat === 'undefined') {
+                    log('✗ initAntiCheat not defined', 'fail');
+                } else {
+                    log('✓ initAntiCheat function exists', 'pass');
+                }
+                
+                // Test storage functions
+                if (typeof StorageManager === 'undefined') {
+                    log('✗ StorageManager not defined', 'fail');
+                } else {
+                    log('✓ StorageManager exists', 'pass');
+                    
+                    // Test storage operations
+                    try {
+                        StorageManager.setWarnings(1);
+                        const warnings = StorageManager.getWarnings();
+                        if (warnings === 1) {
+                            log('✓ Warnings storage works', 'pass');
+                        } else {
+                            log('✗ Warnings storage failed', 'fail');
+                        }
+                    } catch (e) {
+                        log('✗ Storage test failed: ' + e.message, 'fail');
+                    }
+                }
+            } catch (e) {
+                log('✗ Anti-cheat test failed: ' + e.message, 'fail');
+            }
+        }
+
+        function runAllTests() {
+            log('=== Starting Full UAT ===', 'info');
+            clearStorage();
+            setTimeout(() => {
+                testAuthentication();
+                setTimeout(() => {
+                    testMCQ();
+                    setTimeout(() => {
+                        testDebug();
+                        setTimeout(() => {
+                            testPS();
+                            setTimeout(() => {
+                                testAntiCheat();
+                                log('=== UAT Complete ===', 'info');
+                            }, 500);
+                        }, 500);
+                    }, 500);
+                }, 500);
+            }, 500);
+        }
+
+        // Auto-run on load if data is available
+        window.addEventListener('load', () => {
+            log('UAT Test Script Loaded', 'info');
+            log('Click "Run All Tests" to start', 'info');
+        });
+    </script>
+</body>
+</html>

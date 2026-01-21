@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Results - CodeWar</title>
+  <link rel="stylesheet" href="css/codewar.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Competition Results</h1>
+      <p class="subtitle">CodeWar TechnoMeet 2K26</p>
+    </div>
+
+    <div class="results-container">
+      <div class="results-summary">
+        <h2 id="total-score">Calculating...</h2>
+        <p style="color: var(--text-secondary);">Your performance summary</p>
+      </div>
+
+      <div class="score-breakdown">
+        <div class="score-card">
+          <h3>Round 1: MCQ</h3>
+          <div class="score-value" id="mcq-score">-</div>
+          <p id="mcq-percentage">-</p>
+          <p id="mcq-time">Time: -</p>
+        </div>
+        <div class="score-card">
+          <h3>Round 2: Debug</h3>
+          <div class="score-value" id="debug-score">-</div>
+          <p id="debug-percentage">-</p>
+          <p id="debug-time">Time: -</p>
+        </div>
+        <div class="score-card">
+          <h3>Round 3: Problem Statement</h3>
+          <div class="score-value" id="ps-score">-</div>
+          <p id="ps-percentage">-</p>
+          <p id="ps-time">Time: -</p>
+        </div>
+      </div>
+
+      <div class="results-container" style="margin-top: 30px;">
+        <h3>Competition Statistics</h3>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+          <div class="score-card">
+            <h4>Warnings</h4>
+            <div style="font-size: 2em; color: var(--accent-yellow);" id="warnings-count">0</div>
+          </div>
+          <div class="score-card">
+            <h4>Tab Switches</h4>
+            <div style="font-size: 2em; color: var(--accent-yellow);" id="tab-switches-count">0</div>
+          </div>
+          <div class="score-card">
+            <h4>Registration Code</h4>
+            <div style="font-size: 1.2em; color: var(--accent-cyan);" id="reg-code">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div style="text-align: center; margin-top: 40px;">
+        <button class="btn" onclick="downloadResults()">Download Results</button>
+        <button class="btn btn-secondary" onclick="window.location.href='index.html'">Back to Home</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/timer.js"></script>
+  <script>
+    // Check authentication
+    if (!checkAuthentication()) {
+      window.location.href = 'index.html';
+    } else {
+      displayResults();
+    }
+
+    function displayResults() {
+      // Get scores
+      const mcqScore = StorageManager.getMCQScore();
+      const debugScore = StorageManager.getDebugScore();
+      const psScore = StorageManager.getPSScore();
+
+      // Display MCQ results
+      if (mcqScore) {
+        // Get total questions from stored data or default to 30
+        const totalQuestions = mcqScore.totalQuestions || 30;
+        document.getElementById('mcq-score').textContent = `${mcqScore.score}/${totalQuestions}`;
+        document.getElementById('mcq-percentage').textContent = `${mcqScore.percentage}%`;
+        const mcqTime = StorageManager.getTimer('mcq');
+        if (mcqTime !== null && mcqTime >= 0) {
+          const totalSeconds = ROUND_DURATIONS.mcq * 60;
+          const elapsed = totalSeconds - mcqTime;
+          const minutes = Math.max(0, Math.floor(elapsed / 60));
+          const seconds = Math.max(0, elapsed % 60);
+          document.getElementById('mcq-time').textContent = `Time: ${minutes}m ${seconds}s`;
+        } else {
+          document.getElementById('mcq-time').textContent = 'Time: N/A';
+        }
+      } else {
+        document.getElementById('mcq-score').textContent = 'Not Attempted';
+        document.getElementById('mcq-percentage').textContent = '-';
+      }
+
+      // Display Debug results
+      if (debugScore) {
+        document.getElementById('debug-score').textContent = `${debugScore.score}/5`;
+        document.getElementById('debug-percentage').textContent = `${debugScore.percentage}%`;
+        const debugTime = StorageManager.getTimer('debug');
+        if (debugTime !== null && debugTime >= 0) {
+          const totalSeconds = ROUND_DURATIONS.debug * 60;
+          const elapsed = totalSeconds - debugTime;
+          const minutes = Math.max(0, Math.floor(elapsed / 60));
+          const seconds = Math.max(0, elapsed % 60);
+          document.getElementById('debug-time').textContent = `Time: ${minutes}m ${seconds}s`;
+        } else {
+          document.getElementById('debug-time').textContent = 'Time: N/A';
+        }
+      } else {
+        document.getElementById('debug-score').textContent = 'Not Attempted';
+        document.getElementById('debug-percentage').textContent = '-';
+      }
+
+      // Display PS results
+      if (psScore !== null) {
+        document.getElementById('ps-score').textContent = `${psScore}%`;
+        document.getElementById('ps-percentage').textContent = 'Test Cases Passed';
+        const psTime = StorageManager.getTimer('ps');
+        if (psTime !== null && psTime >= 0) {
+          const totalSeconds = ROUND_DURATIONS.ps * 60;
+          const elapsed = totalSeconds - psTime;
+          const minutes = Math.max(0, Math.floor(elapsed / 60));
+          const seconds = Math.max(0, elapsed % 60);
+          document.getElementById('ps-time').textContent = `Time: ${minutes}m ${seconds}s`;
+        } else {
+          document.getElementById('ps-time').textContent = 'Time: N/A';
+        }
+      } else {
+        document.getElementById('ps-score').textContent = 'Not Attempted';
+        document.getElementById('ps-percentage').textContent = '-';
+      }
+
+      // Calculate total score
+      let totalPercentage = 0;
+      let roundsCompleted = 0;
+      if (mcqScore) {
+        totalPercentage += mcqScore.percentage;
+        roundsCompleted++;
+      }
+      if (debugScore) {
+        totalPercentage += debugScore.percentage;
+        roundsCompleted++;
+      }
+      if (psScore !== null) {
+        totalPercentage += psScore;
+        roundsCompleted++;
+      }
+      
+      const averageScore = roundsCompleted > 0 ? Math.round(totalPercentage / roundsCompleted) : 0;
+      document.getElementById('total-score').textContent = `Total Score: ${Math.max(0, Math.min(100, averageScore))}%`;
+
+      // Display statistics
+      const warnings = StorageManager.getWarnings();
+      const tabSwitches = StorageManager.getTabSwitches();
+      const regCode = StorageManager.getRegistrationCode();
+
+      document.getElementById('warnings-count').textContent = warnings;
+      document.getElementById('tab-switches-count').textContent = tabSwitches;
+      document.getElementById('reg-code').textContent = regCode || 'N/A';
+    }
+
+    function downloadResults() {
+      const results = {
+        registrationCode: StorageManager.getRegistrationCode(),
+        mcqScore: StorageManager.getMCQScore(),
+        debugScore: StorageManager.getDebugScore(),
+        psScore: StorageManager.getPSScore(),
+        warnings: StorageManager.getWarnings(),
+        tabSwitches: StorageManager.getTabSwitches(),
+        timestamp: new Date().toISOString()
+      };
+
+      const dataStr = JSON.stringify(results, null, 2);
+      const dataBlob = new Blob([dataStr], { type: 'application/json' });
+      const url = URL.createObjectURL(dataBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `codewar-results-${StorageManager.getRegistrationCode()}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

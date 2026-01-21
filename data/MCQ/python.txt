@@ -1,0 +1,321 @@
+﻿1.Which data type is immutable? 
+
+A) List 
+
+B) Set 
+
+C) Dictionary 
+
+ D) Tuple 
+
+  Answer: D 
+
+2. Which loop is best when number of iterations is known? 
+
+A) while 
+
+B) for 
+
+C) do-while 
+
+D) infinite 
+
+  Answer: B 
+
+3.Which of the following is NOT a Python keyword? 
+
+A) pass 
+
+B) eval 
+
+C) lambda 
+
+D) break 
+
+  Answer: B 
+
+4.What does append() do? 
+
+A) Adds element at beginning 
+
+B) Adds element at end 
+
+C) Removes element 
+
+D) Sorts list 
+
+  Answer: B 
+
+ 
+
+ 
+
+
+
+5.Which operator checks equality? 
+
+A) = 
+
+B) == 
+
+C) != 
+
+D) := 
+
+  Answer: B 
+
+6.Which collection does NOT allow duplicate values? 
+
+A) List 
+
+B) Tuple 
+
+C) Set 
+
+D) String 
+
+  Answer: C 
+
+7.What is the output? 
+
+x = [1, 2, 3] 
+
+y = x 
+
+y.append(4) 
+
+print(x) 
+
+A) [1, 2, 3] 
+
+B) [4] 
+
+C) [1, 2, 3, 4] 
+
+D) Error 
+
+  Answer: C 
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+8.What does this return? 
+
+def test(): 
+
+    return 
+
+print(test()) 
+
+A) 0 
+
+B) False 
+
+C) None 
+
+D) Error 
+
+  Answer: C 
+
+9.What will be printed? 
+
+X = “Python” 
+
+print(x[10:]) 
+
+A) Error 
+
+B) Python 
+
+C) Empty string 
+
+D) None 
+
+  Answer: C 
+
+10.What happens here? 
+
+a = {1, 2, 3} 
+
+a.add(3) 
+
+print(len(a)) 
+
+A) 2 
+
+B) 3 
+
+C) 4 
+
+D) Error 
+
+  Answer: B 
+
+
+
+11.Output? 
+
+print([i for i in range(3)]) 
+
+A) [1, 2, 3] 
+
+B) [0, 1, 2] 
+
+C) [0, 1, 2, 3] 
+
+D) Error 
+
+  Answer: B 
+
+12.Output? 
+
+X = 10 
+
+Def fun(): 
+
+    Global x 
+
+    X = x + 5 
+
+Fun() 
+
+Print(x) 
+
+A) 10 
+
+B) 5 
+
+C) 15 
+
+D) Error 
+
+  Answer: C 
+
+13.What does pop() do? 
+
+A) Adds element 
+
+B) Removes last element 
+
+C) Sorts list 
+
+D) Copies list 
+
+  Answer: B 
+
+ 
+
+
+
+14.Which keyword is used to handle exceptions? 
+
+A) error 
+
+B) try 
+
+C) handle 
+
+D) catch 
+
+  Answer: B 
+
+15. Which operator is used for exponentiation? 
+
+A) ^ 
+
+B) ** 
+
+C) // 
+
+D) % 
+
+  Answer: B 
+
+16.What does the continue statement do in a loop 
+
+A) Terminates the loop completely 
+
+B) Skips the current iteration and moves to the next iteration 
+
+C) Exits the program 
+
+D) Pauses the loop execution 
+
+  Answer: B 
+
+ 
+
+17. Output? 
+
+Print(“Python”[1:4]) 
+
+A) Pyt 
+
+B) yth 
+
+C) tho 
+
+D) hon 
+
+  Answer: B 
+
+
+
+ 
+
+18. Output of the code? 
+
+Def add(a, b=2, c=3): 
+
+    Return a + b + c 
+
+Print(add(1, c=5)) 
+
+A) 6 
+
+B) 8 
+
+C) Error 
+
+D) 10 
+
+  Answer: B 
+
+ 
+
+19.Output of the code 
+
+Print(“5” + “5”) 
+
+A) 10 
+
+B) 55 
+
+C) Error 
+
+D) None 
+
+  Answer: B 
+
+ 
+
+20. What is the output? 
+
+Print(type(lambda x: x)) 
+
+A) function 
+
+B) method 
+
+C) lambda 
+
+D) <class ‘function’> 
+
+  Answer: D

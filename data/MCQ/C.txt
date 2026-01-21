@@ -1,0 +1,281 @@
+﻿ 
+
+
+**Q1. What will be the output?**  
+
+`int x = 5; printf("%d %d", x, x, x);`  
+
+A. 5 5  
+
+B. 5 5 5  
+
+C. 5  
+
+D. Compile error 
+ 
+Answer: B
+
+**Q2. What is the output?**  
+
+`printf("%d", printf("Code"));`  
+
+A. Code 4  
+
+B. 4 Code  
+
+C. Code  
+
+D. Undefined 
+
+Answer: A
+ 
+
+**Q3. Which statement is TRUE about this function?**  
+
+`void fun() { static int x = 10; x++; }`  
+
+A. x is initialized every call  
+
+B. x retains value across calls  
+
+C. Compile error  
+
+D. x is global 
+ 
+Answer: B
+
+**Q4. What will sizeof return?**  
+
+`char p[] = "Code"; printf("%d", sizeof(p));`  
+
+A. 4  
+
+B. 5  
+
+C. 8  
+
+D. sizeof(char*)
+ 
+Answer:B
+
+
+**Q5. What is the correct syntax to print text in C?** 
+A. print("Hello")  
+
+B. printf("Hello")  
+
+C. echo("Hello")  
+
+D. cout << "Hello"
+
+ Answer:B
+
+**Q6. What is printed?**  
+
+`int a = 5; printf("%d", a++);`  
+
+A. 5  
+
+B. 6  
+
+C. 4  
+
+D. Undefined 
+
+ Answer:A
+
+**Q7. Output of the following code?**  
+
+`char p[] = "CodeWar"; printf("%c", p[4]);`  
+
+A. W  
+
+B. e  
+
+C. o  
+
+D. r 
+
+ Answer:B
+
+**Q8. Which symbol is used to end a statement in C?** 
+
+A. ;  
+
+B. .  
+
+C. ,  
+
+D. :
+
+ Answer:A
+
+**Q9. What will be the output?**  
+
+`printf("%d", 5 + 3 * 2);` 
+A. 16  
+
+B. 11  
+
+C. 10  
+
+D. 13
+
+ Answer:B
+
+**Q10. What will be the output?**  
+
+`static int x; if(x) printf("Yes"); else printf("No");`  
+
+A. Yes  
+
+B. No  
+
+C. 0  
+
+D. Garbage 
+
+ 
+Answer:B
+
+
+**Q11. Which header file is required for printf?** 
+
+A. stdlib.h  
+
+B. stdio.h  
+
+C. conio.h  
+
+D. string.h
+
+ Answer:B
+
+**Q12. Identify the correct statement about this pointer usage**  
+
+`int const *p = x;`  
+
+A. p points to constant int  
+
+B. Constant pointer to int  
+
+C. Both constant  
+
+D. Compile error 
+
+
+Answer:A
+ 
+
+**Q13. What is the output?**  
+
+`int x = 1; switch(x) { case 1: printf("1"); break; case 2: printf("2"); }`  
+
+A. 1  
+
+B. 12  
+
+C. 2  
+
+D. Nothing
+ 
+Answer:A
+
+**Q14. What is the default value of an uninitialized local variable?** 
+A. 0  
+
+B. NULL  
+
+C. Garbage value  
+
+D. Depends on data type
+
+ Answer:C
+
+**Q15. Which option best describes the issue in this code?**  
+
+`char p[5]; strcpy(p, "Code");`  
+
+A. Buffer overflow  
+
+B. No issue  
+
+C. Null terminator missing  
+
+D. Type mismatch 
+
+ 
+Answer:B
+
+
+**Q16. What is the behavior of this loop?**  
+
+`int i = 0; while(i < 5) { i = i + 1; if(i == 3) printf("%d", i); }`  
+
+A. Prints 3  
+
+B. Infinite loop  
+
+C. Prints nothing  
+
+D. Prints 1 2 3 4 5 
+ 
+Answer:A
+
+**Q17. What does this macro expand to?**  
+
+`#define SQR(x) x*x; printf("%d", SQR(2+1));`  
+
+A. 9  
+
+B. 6  
+
+C. 5  
+
+D. Compile error 
+
+ Answer:B
+
+**Q18. What will be printed?**  
+
+`int arr[] = {10, 20, 30, 40}; printf("%d", *arr + 2);`  
+
+A. 12  
+
+B. 20  
+
+C. 10  
+
+D. 30 
+
+
+Answer:A
+ 
+
+**Q19. What is the behavior of this program?**  
+
+`int i = 0; for(printf("A"); i < 2; printf("B"), i++) {}`  
+
+A. Prints ABAB  
+
+B. Prints AABB  
+
+C. Infinite A  
+
+D. Compile error 
+ 
+Answer:A
+
+**Q20. What happens when this code executes?**  
+
+`int a = 3; int b = sizeof(a++); printf("%d %d", a, b);`  
+
+A. 3 4  
+
+B. 4 4  
+
+C. 3 2  
+
+D. Undefined a 
+
+Answer:A

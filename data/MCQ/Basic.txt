@@ -1,0 +1,144 @@
+﻿
+1. Which symbol is used to end a statement in C, C++ and Java?
+A) : B) . C) ; D) ,
+
+Answer:C
+
+2. Which of the following is a valid variable name?
+A) 2num B) num-1 C) num_1 D) int
+
+Answer:C
+
+3. Which data type is used to store whole numbers?
+A) float B) char C) int D) double
+
+Answer:C
+
+4. Which operator is used for addition?
+A) * B) / C) + D) %
+
+Answer:C
+
+5. Which loop executes at least once?
+A) for B) while C) do-while D) if
+
+Answer:C
+
+6. Which keyword is used to take decision?
+A) for B) if C) break D) continue
+
+Answer:B
+
+7. Which of the following is used to store multiple values of same type?
+A) variable B) function C) array D) loop
+
+Answer:C
+
+8. What is the default value of int variable in Java?
+A) 0 B) 1 C) null D) garbage
+
+Answer:A
+
+9. Which symbol is used for single-line comment?
+A) /* */ B) # C) // D)
+
+Answer:C
+
+10. Which function is used to print output in C?
+A) cout B) print() C) printf() D) println
+
+Answer:C
+
+11. Which function is used to take input in Python?
+A) scan() B) input() C) read() D) get()
+
+Answer:B
+
+12. Which of the following is a relational operator?
+A) = B) + C) == D) &&
+
+Answer:C
+
+13. Which keyword is used to define a function in Python?
+A) function B) define C) def D) fun
+
+Answer:C
+
+14. Which header file is required for input-output in C?
+A) stdlib.h B) math.h C) stdio.h D) conio.h
+
+Answer:C
+
+15. Which access specifier is most restrictive in Java?
+A) public B) protected C) default D) private
+
+Answer:D
+
+16. Which keyword is used to stop a loop?
+A) stop B) exit C) break D) end
+
+Answer:C
+
+17. Which data type is used to store characters?
+A) int B) char C) string D) float
+
+Answer:B
+
+18. Which of the following is NOT a loop?
+A) for B) while C) do-while D) switch
+
+Answer:D
+
+
+19. Which operator is used to find remainder?
+A) / B) % C) * D) +
+
+Answer:B
+
+20. Which keyword is used to create an object in Java?
+A) class B) object C) new D) this
+
+Answer:C
+
+
+Answer Key
+
+1. C
+
+2. C
+
+3. C
+
+4. C
+
+5. C
+
+6. B
+
+7. C
+
+8. A
+
+9. C
+
+10. C
+
+11. B
+
+12. C
+
+13. C
+
+14. C
+
+15. D
+
+16. C
+
+17. B
+
+18. D
+
+19. B
+
+20. C

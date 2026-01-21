@@ -1,0 +1,179 @@
+Java MCQ
+Easy level :
+1. Which method is the starting point of a Java program?
+A. start()
+B. main()
+C. run()
+D. init()
+? Answer: B
+
+2. Which keyword is used to inherit a class?
+A. implements
+B. inherit
+C. extends
+D. super
+? Answer: C
+
+3. Which of these is a checked exception?
+A. ArithmeticException
+B. NullPointerException
+C. IOException
+D. ArrayIndexOutOfBoundsException
+? Answer: C
+
+4. Which of the following cannot be declared static?
+A. Variable
+B. Method
+C. Constructor
+D. Block
+? Answer: C
+
+5. Which collection does NOT allow duplicate elements?
+A. ArrayList
+B. Vector
+C. HashSet
+D. LinkedList
+? Answer: C
+
+Medium Level :
+
+6. Which keyword prevents method overriding?
+A. static
+B. private
+C. final
+D. protected
+? Answer: C
+
+7. Which of the following is immutable?
+A. ArrayList
+B. String
+C. StringBuilder
+D. StringBuffer
+? Answer: B
+
+8. Which access modifier allows access only within the same package?
+A. private
+B. protected
+C. default
+D. public
+? Answer: C
+
+9. What will be the output? (Logic)
+int a = 5;
+System.out.println(a++ + ++a);
+A. 10
+B. 11
+C. 12
+D. 13
+? Answer: C
+(5 + 7 = 12)
+
+10. Which memory area stores objects in Java?
+A. Stack
+B. Heap
+C. Method area
+D. CPU register
+? Answer: B
+
+Hard Level :
+
+11. What will be the output? (Logic)
+int i = 1;
+while(i <= 3) {
+    System.out.print(i++);
+}
+A. 123
+B. 012
+C. Infinite loop
+D. 321
+? Answer: A
+
+12. What will be the output? (Logic)
+System.out.println(5 / 2);
+A. 2.5
+B. 2
+C. 3
+D. Compile-time error
+? Answer: B
+
+13. What will be the output? (Logic)
+int x = 10;
+if(x++ > 10)
+    System.out.print("A");
+else
+    System.out.print("B");
+A. A
+B. B
+C. AB
+D. Compile-time error
+? Answer: B
+
+14. Which feature supports runtime polymorphism?
+A. Method overloading
+B. Method overriding
+C. Encapsulation
+D. Abstraction
+? Answer: B
+
+
+
+25. What will be the output? (Logic)
+int a = 10;
+int b = 20;
+System.out.println(a & b);
+A. 0
+B. 20
+C. 30
+D. 10
+? Answer: A
+
+26. Which of the following allows multiple inheritance in Java?
+A. Class
+B. Abstract class
+C. Interface
+D. Package
+? Answer: C
+
+27. What will be the output? (Logic)
+int x = 0;
+for(; x < 3; x++);
+System.out.print(x);
+A. 0
+B. 2
+C. 3
+D. Compile-time error
+? Answer: C
+
+
+
+
+28. Which exception occurs when dividing by zero?
+A. IOException
+B. NullPointerException
+C. ArithmeticException
+D. NumberFormatException
+? Answer: C
+
+29. Which keyword refers to the current object?
+A. self
+B. this
+C. super
+D. current
+? Answer: B
+
+30. What will be the output? 
+int x = 5;
+System.out.println(x++ + x++ + ++x);
+A. 17
+B. 18
+C. 19
+D. 20
+? Answer: C
+
+
+ 
+
+
+
+
+

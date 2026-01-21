@@ -1,0 +1,43 @@
+============================================================
+CodeWar Platform - Reset Script Usage
+============================================================
+
+QUICK START:
+-----------
+1. Run the reset script:
+   python reset.py
+
+2. Enter password when prompted: CodeWar2026Admin!
+
+3. Open browser and go to:
+   http://localhost:8000/codewar/reset.html
+
+4. Enter password and click "Reset All Data"
+
+============================================================
+
+DEFAULT PASSWORD:
+----------------
+CodeWar2026Admin!
+
+(Change this before the actual event!)
+
+============================================================
+
+WHAT IT DOES:
+-------------
+- Clears all localStorage (progress, answers, scores)
+- Clears all sessionStorage (session data, timers)
+- Clears all cookies
+- Resets all round completion status
+- Removes all authentication sessions
+
+============================================================
+
+FILES:
+------
+- reset.py          : Python script (run this)
+- reset.html        : Auto-generated reset page
+- RESET_README.md   : Detailed documentation
+
+============================================================

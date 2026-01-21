@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeWar Competition Platform</title>
+  <link rel="stylesheet" href="css/codewar.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>CodeWar Competition</h1>
+      <p class="subtitle">TechnoMeet 2K26</p>
+    </div>
+
+    <div id="countdown-section" class="timer-container">
+      <h2>Competition Starts In</h2>
+      <div id="countdown" class="countdown-display">Loading...</div>
+      <p id="countdown-message" class="text-center"></p>
+    </div>
+
+    <div id="auth-section" class="form-container" style="display: none;">
+      <h2 class="text-center">Enter Registration Code</h2>
+      <form id="auth-form" onsubmit="handleAuth(event)">
+        <div class="form-group">
+          <label for="code">Registration Code</label>
+          <input type="text" id="code" name="code" placeholder="CODE-XXXX" required autocomplete="off">
+        </div>
+        <button type="submit" class="btn" style="width: 100%;">Enter Competition</button>
+      </form>
+      <p id="auth-error" style="color: var(--accent-red); margin-top: 15px; display: none;"></p>
+    </div>
+
+    <div id="rounds-section" style="display: none;">
+      <div class="results-container">
+        <h2 class="text-center">Competition Rounds</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; margin-top: 30px;">
+          <div class="score-card">
+            <h3>Round 1: MCQ Quiz</h3>
+            <p>30 questions, 30 minutes</p>
+            <button id="mcq-btn" class="btn mt-20" onclick="navigateToRound('mcq')">Start MCQ Round</button>
+          </div>
+          <div class="score-card">
+            <h3>Round 2: Debug Code</h3>
+            <p>Debug faulty programs, 45 minutes</p>
+            <button id="debug-btn" class="btn mt-20" onclick="navigateToRound('debug')" disabled>Start Debug Round</button>
+          </div>
+          <div class="score-card">
+            <h3>Round 3: Problem Statement</h3>
+            <p>Solve coding problems, 60 minutes</p>
+            <button id="ps-btn" class="btn mt-20" onclick="navigateToRound('ps')" disabled>Start PS Round</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/utils.js?v=2"></script>
+  <script src="js/storage.js?v=2"></script>
+  <script src="js/auth.js?v=2"></script>
+  <script src="js/timer.js?v=2"></script>
+  <script>
+    let countdownTimer = null;
+
+    // Check authentication
+    if (checkAuthentication()) {
+      const currentRound = StorageManager.getCurrentRound();
+      if (currentRound === 'completed') {
+        window.location.href = 'results.html';
+      } else {
+        showRoundsSection();
+      }
+    } else {
+      // Check if exam can start
+      if (canStartExam()) {
+        showAuthSection();
+      } else {
+        startCountdown();
+      }
+    }
+
+    function startCountdown() {
+      countdownTimer = new CountdownTimer((countdown) => {
+        const countdownEl = document.getElementById('countdown');
+        const messageEl = document.getElementById('countdown-message');
+        
+        if (countdown.days > 0 || countdown.hours > 0 || countdown.minutes > 0 || countdown.seconds > 0) {
+          countdownEl.textContent = countdown.formatted;
+          messageEl.textContent = 'Please wait for the competition to start';
+        } else {
+          countdownEl.textContent = 'Competition Started!';
+          messageEl.textContent = 'You can now enter your registration code';
+          countdownTimer.stop();
+          showAuthSection();
+        }
+      });
+      countdownTimer.start();
+    }
+
+    function showAuthSection() {
+      document.getElementById('countdown-section').style.display = 'none';
+      document.getElementById('auth-section').style.display = 'block';
+    }
+
+    function showRoundsSection() {
+      document.getElementById('countdown-section').style.display = 'none';
+      document.getElementById('auth-section').style.display = 'none';
+      document.getElementById('rounds-section').style.display = 'block';
+      
+      // Enable/disable round buttons based on progress
+      const currentRound = StorageManager.getCurrentRound();
+      const mcqScore = StorageManager.getMCQScore();
+      const debugScore = StorageManager.getDebugScore();
+      
+      // MCQ button - always enabled (first round)
+      document.getElementById('mcq-btn').disabled = false;
+      
+      // Debug button - enabled if MCQ is completed
+      if (mcqScore || currentRound === 'debug' || currentRound === 'ps' || currentRound === 'completed') {
+        document.getElementById('debug-btn').disabled = false;
+      }
+      
+      // PS button - enabled if Debug is completed
+      if (debugScore || currentRound === 'ps' || currentRound === 'completed') {
+        document.getElementById('ps-btn').disabled = false;
+      }
+    }
+
+    function handleAuth(event) {
+      event.preventDefault();
+      const code = document.getElementById('code').value;
+      const result = authenticate(code);
+      
+      const errorEl = document.getElementById('auth-error');
+      if (result.success) {
+        errorEl.style.display = 'none';
+        showRoundsSection();
+      } else {
+        errorEl.textContent = result.message;
+        errorEl.style.display = 'block';
+      }
+    }
+
+    function navigateToRound(round) {
+      const currentRound = StorageManager.getCurrentRound();
+      
+      // MCQ is the first round - allow if not_started, mcq, or if no round set
+      if (round === 'mcq') {
+        if (currentRound === 'not_started' || currentRound === 'mcq' || !currentRound || currentRound === null) {
+          // Set current round to mcq if not already set
+          if (currentRound !== 'mcq') {
+            StorageManager.setCurrentRound('mcq');
+          }
+          window.location.href = 'mcq.html';
+        } else {
+          alert('Please complete previous rounds first');
+        }
+      } 
+      // Debug round - allow if mcq is completed, or already in debug/ps/completed
+      else if (round === 'debug') {
+        const mcqScore = StorageManager.getMCQScore();
+        if (mcqScore || currentRound === 'debug' || currentRound === 'ps' || currentRound === 'completed') {
+          if (currentRound !== 'debug') {
+            StorageManager.setCurrentRound('debug');
+          }
+          window.location.href = 'debug.html';
+        } else {
+          alert('Please complete the MCQ round first');
+        }
+      } 
+      // PS round - allow if debug is completed, or already in ps/completed
+      else if (round === 'ps') {
+        const debugScore = StorageManager.getDebugScore();
+        if (debugScore || currentRound === 'ps' || currentRound === 'completed') {
+          if (currentRound !== 'ps') {
+            StorageManager.setCurrentRound('ps');
+          }
+          window.location.href = 'ps.html';
+        } else {
+          alert('Please complete the Debug round first');
+        }
+      }
+    }
+  </script>
+</body>
+</html>

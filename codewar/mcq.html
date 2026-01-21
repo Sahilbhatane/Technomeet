@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MCQ Round - CodeWar</title>
+  <link rel="stylesheet" href="css/codewar.css">
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Round 1: MCQ Quiz</h1>
+      <div class="question-header">
+        <span class="timer-display" id="timer">30:00</span>
+        <span class="question-number">Question <span id="current-q">1</span> of <span id="total-q">-</span></span>
+      </div>
+    </div>
+
+    <div id="language-selection" style="display: none;">
+      <div class="form-container">
+        <h2 class="text-center">Select Your Language</h2>
+        <p class="text-center" style="color: var(--text-secondary); margin-bottom: 20px;">
+          You can change language up to 2 times
+        </p>
+        <div class="language-selection">
+          <div class="language-card" onclick="selectLanguage('c')">
+            <h3>C</h3>
+          </div>
+          <div class="language-card" onclick="selectLanguage('cpp')">
+            <h3>C++</h3>
+          </div>
+          <div class="language-card" onclick="selectLanguage('java')">
+            <h3>Java</h3>
+          </div>
+          <div class="language-card" onclick="selectLanguage('python')">
+            <h3>Python</h3>
+          </div>
+        </div>
+        <p id="language-changes" class="text-center" style="color: var(--accent-yellow); margin-top: 20px;"></p>
+      </div>
+    </div>
+
+    <div id="quiz-container" style="display: none;">
+      <div class="question-list" id="question-nav"></div>
+      
+      <div class="question-container">
+        <div class="question-header">
+          <span class="question-number">Question <span id="q-num">1</span></span>
+        </div>
+        <div class="question-text" id="question-text"></div>
+        <div class="code-block" id="question-code" style="display: none;"></div>
+        <ul class="options-list" id="options-list"></ul>
+      </div>
+
+      <div class="navigation">
+        <button class="btn btn-secondary" onclick="previousQuestion()" id="prev-btn">Previous</button>
+        <button class="btn" onclick="nextQuestion()" id="next-btn">Next</button>
+        <button class="btn btn-danger" onclick="submitQuiz()" id="submit-btn">Submit Quiz</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/timer.js"></script>
+  <script src="js/anti_cheat.js"></script>
+  <script src="js/data.js"></script>
+  <script>
+    let questions = [];
+    let currentQuestionIndex = 0;
+    let answers = {};
+    let roundTimer = null;
+    let antiCheat = null;
+
+    // Check authentication
+    if (!requireAuth()) {
+      // Redirect handled by requireAuth
+    } else {
+      initializeQuiz();
+    }
+
+    function initializeQuiz() {
+      // Initialize anti-cheat
+      antiCheat = initAntiCheat(true);
+
+      // Check if language is selected
+      const language = StorageManager.getLanguageChoice();
+      if (!language) {
+        showLanguageSelection();
+      } else {
+        loadQuestions(language);
+      }
+    }
+
+    function showLanguageSelection() {
+      document.getElementById('language-selection').style.display = 'block';
+      updateLanguageChangesDisplay();
+    }
+
+    function selectLanguage(lang) {
+      const changes = StorageManager.getLanguageChanges();
+      if (changes >= 2) {
+        alert('You have reached the maximum number of language changes (2)');
+        return;
+      }
+
+      if (StorageManager.getLanguageChoice() !== lang) {
+        StorageManager.incrementLanguageChanges();
+      }
+
+      StorageManager.setLanguageChoice(lang);
+      document.querySelectorAll('.language-card').forEach(card => {
+        card.classList.remove('selected');
+        if (card.onclick.toString().includes(`'${lang}'`)) {
+          card.classList.add('selected');
+        }
+      });
+
+      updateLanguageChangesDisplay();
+      setTimeout(() => {
+        loadQuestions(lang);
+      }, 500);
+    }
+
+    function updateLanguageChangesDisplay() {
+      const changes = StorageManager.getLanguageChanges();
+      const remaining = 2 - changes;
+      const msgEl = document.getElementById('language-changes');
+      if (remaining > 0) {
+        msgEl.textContent = `Language changes remaining: ${remaining}`;
+      } else {
+        msgEl.textContent = 'No language changes remaining';
+        msgEl.style.color = 'var(--accent-red)';
+      }
+    }
+
+    function loadQuestions(language) {
+      try {
+        // Check if CodeWarData is available
+        if (typeof CodeWarData === 'undefined' || !CodeWarData.mcq) {
+          alert('Error: Question data not loaded. Please refresh the page.');
+          return;
+        }
+
+        const langMap = { c: 'c', cpp: 'cpp', java: 'java', python: 'python' };
+        const langKey = langMap[language] || 'c';
+        
+        // Get questions for selected language
+        let langQuestions = CodeWarData.mcq[langKey] || [];
+        
+        if (langQuestions.length === 0) {
+          alert('No questions available for this language');
+          showLanguageSelection();
+          return;
+        }
+        
+        // Shuffle and take up to 30 questions (or all if less than 30)
+        const maxQuestions = Math.min(30, langQuestions.length);
+        questions = shuffleArray(langQuestions).slice(0, maxQuestions);
+        
+        if (questions.length === 0) {
+          alert('Error loading questions. Please try again.');
+          showLanguageSelection();
+          return;
+        }
+        
+        // Load saved answers
+        answers = StorageManager.getMCQAnswers();
+        
+        // Show quiz
+        document.getElementById('language-selection').style.display = 'none';
+        document.getElementById('quiz-container').style.display = 'block';
+        
+        // Initialize question navigation
+        renderQuestionNavigation();
+        
+        // Start timer
+        startTimer();
+        
+        // Display first question
+        displayQuestion(0);
+      } catch (error) {
+        console.error('Error loading questions:', error);
+        alert('An error occurred while loading questions. Please refresh the page.');
+      }
+    }
+
+    function renderQuestionNavigation() {
+      const navEl = document.getElementById('question-nav');
+      navEl.innerHTML = '';
+      questions.forEach((q, index) => {
+        const btn = document.createElement('button');
+        btn.className = 'question-number-btn';
+        btn.textContent = index + 1;
+        btn.onclick = () => displayQuestion(index);
+        if (answers[q.id]) {
+          btn.classList.add('answered');
+        }
+        if (index === currentQuestionIndex) {
+          btn.classList.add('current');
+        }
+        navEl.appendChild(btn);
+      });
+    }
+
+    function displayQuestion(index) {
+      if (index < 0 || index >= questions.length) {
+        console.error('Invalid question index:', index);
+        return;
+      }
+      
+      currentQuestionIndex = index;
+      const question = questions[index];
+      
+      if (!question) {
+        console.error('Question not found at index:', index);
+        return;
+      }
+      
+      document.getElementById('q-num').textContent = index + 1;
+      document.getElementById('current-q').textContent = index + 1;
+      document.getElementById('total-q').textContent = questions.length || '-';
+      document.getElementById('question-text').textContent = question.question || 'Question not available';
+      
+      // Show code if available
+      const codeEl = document.getElementById('question-code');
+      if (question.code && question.code.trim()) {
+        codeEl.textContent = question.code;
+        codeEl.style.display = 'block';
+      } else {
+        codeEl.style.display = 'none';
+      }
+      
+      // Display options
+      const optionsEl = document.getElementById('options-list');
+      optionsEl.innerHTML = '';
+      
+      if (!question.options || question.options.length === 0) {
+        optionsEl.innerHTML = '<li>No options available</li>';
+        return;
+      }
+      
+      question.options.forEach((option, optIndex) => {
+        const li = document.createElement('li');
+        li.className = 'option-item';
+        if (answers[question.id] === String.fromCharCode(65 + optIndex)) {
+          li.classList.add('selected');
+        }
+        li.innerHTML = `<span class="option-label">${String.fromCharCode(65 + optIndex)})</span> ${option || 'Option not available'}`;
+        li.onclick = () => selectOption(question.id, String.fromCharCode(65 + optIndex));
+        optionsEl.appendChild(li);
+      });
+      
+      // Update navigation buttons
+      document.getElementById('prev-btn').disabled = index === 0;
+      document.getElementById('next-btn').disabled = index === questions.length - 1;
+      
+      // Update question navigation
+      renderQuestionNavigation();
+    }
+
+    function selectOption(questionId, option) {
+      try {
+        if (!questionId || !option) {
+          console.error('Invalid questionId or option');
+          return;
+        }
+        answers[questionId] = option;
+        StorageManager.setMCQAnswer(questionId, option);
+        displayQuestion(currentQuestionIndex);
+      } catch (error) {
+        console.error('Error selecting option:', error);
+        alert('Error saving answer. Please try again.');
+      }
+    }
+
+    function previousQuestion() {
+      if (currentQuestionIndex > 0) {
+        displayQuestion(currentQuestionIndex - 1);
+      }
+    }
+
+    function nextQuestion() {
+      if (currentQuestionIndex < questions.length - 1) {
+        displayQuestion(currentQuestionIndex + 1);
+      }
+    }
+
+    function startTimer() {
+      roundTimer = new RoundTimer('mcq', ROUND_DURATIONS.mcq);
+      roundTimer.start((expired, remaining) => {
+        if (expired) {
+          submitQuiz(true);
+        } else {
+          const timeEl = document.getElementById('timer');
+          timeEl.textContent = roundTimer.getFormattedTime();
+          if (remaining <= 300) { // 5 minutes
+            timeEl.classList.add('timer-warning');
+          }
+        }
+      });
+    }
+
+    function submitQuiz(autoSubmit = false) {
+      if (!autoSubmit && !confirm('Are you sure you want to submit? You cannot change answers after submission.')) {
+        return;
+      }
+
+      try {
+        roundTimer.stop();
+        if (antiCheat) antiCheat.stop();
+
+        // Calculate score
+        let correct = 0;
+        if (questions.length === 0) {
+          alert('No questions to submit');
+          return;
+        }
+
+        questions.forEach(q => {
+          if (!q || !q.id) return;
+          const userAnswer = answers[q.id];
+          if (userAnswer && q.answer) {
+            try {
+              const correctAnswer = decodeAnswer(q.answer);
+              if (correctAnswer && userAnswer === correctAnswer) {
+                correct++;
+              }
+            } catch (e) {
+              console.error('Error decoding answer for question', q.id, e);
+            }
+          }
+        });
+
+        const percentage = questions.length > 0 ? Math.max(0, Math.min(100, Math.round((correct / questions.length) * 100))) : 0;
+        StorageManager.setMCQScore(correct, percentage, questions.length);
+        StorageManager.setCurrentRound('debug');
+        
+        if (autoSubmit) {
+          alert('Time expired! Your answers have been submitted automatically.');
+        }
+        
+        window.location.href = 'index.html';
+      } catch (error) {
+        console.error('Error submitting quiz:', error);
+        alert('An error occurred while submitting. Please try again.');
+      }
+    }
+  </script>
+</body>
+</html>

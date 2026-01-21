@@ -215,6 +215,10 @@ codewar/
 - `codewar/js/code_verifier.js` - Client-side code execution and test case verification
 - `codewar/js/utils.js` - Utility functions
 - `codewar/css/codewar.css` - Competition-specific styles
+- `codewar/start_server.bat` - One-click Windows batch script to start server and open browser
+- `codewar/start_server.ps1` - PowerShell alternative script for server startup
+- `codewar/START_SERVER.md` - Documentation for server start scripts
+- `.gitignore` - Git ignore file for Python, IDE, OS, and temporary files
 - JSON question banks from existing text files (already exist in data/)
 
 ## Files to Remove (PHP Code)

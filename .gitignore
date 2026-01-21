@@ -1,5 +1,9 @@
 # CodeWar Competition Platform - .gitignore
 
+# Plan files
+*.plan.md
+codewar_competition_platform_*.plan.md
+
 # Python
 __pycache__/
 *.py[cod]

@@ -46,6 +46,7 @@
       <div class="question-container">
         <div class="question-header">
           <span class="question-number">Question <span id="q-num">1</span></span>
+          <span id="autosave-status" style="color: var(--accent-green); font-size: 0.8em;"></span>
         </div>
         <div class="question-text" id="question-text"></div>
         <div class="code-block" id="question-code" style="display: none;"></div>
@@ -60,27 +61,48 @@
     </div>
   </div>
 
-  <script src="js/utils.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/timer.js"></script>
-  <script src="js/anti_cheat.js"></script>
-  <script src="js/data.js"></script>
+  <script src="js/utils.js?v=3"></script>
+  <script src="js/storage.js?v=3"></script>
+  <script src="js/auth.js?v=3"></script>
+  <script src="js/timer.js?v=3"></script>
+  <script src="js/anti_cheat.js?v=3"></script>
+  <script src="js/data.js?v=3"></script>
   <script>
     let questions = [];
     let currentQuestionIndex = 0;
     let answers = {};
     let roundTimer = null;
     let antiCheat = null;
+    let isSubmitting = false;  // FIX: Prevent double submission
+    let currentLanguage = null;
 
-    // Check authentication
+    // Check authentication and round access
     if (!requireAuth()) {
       // Redirect handled by requireAuth
     } else {
-      initializeQuiz();
+      // FIX: Validate round state
+      const currentRound = StorageManager.getCurrentRound();
+      if (currentRound === 'completed') {
+        window.location.href = 'results.html';
+      } else if (currentRound === 'debug' || currentRound === 'ps') {
+        // Already past MCQ, allow access for review but warn
+        console.log('[MCQ] Round already completed, allowing review');
+        initializeQuiz();
+      } else {
+        initializeQuiz();
+      }
     }
 
     function initializeQuiz() {
+      // Verify storage is working
+      if (!StorageManager.verifyStorageIntegrity()) {
+        // NON-BLOCKING: Using showAlert instead of alert() to prevent focus theft
+        // which would trigger anti-cheat false positives
+        showAlert('Browser storage is not working. Please enable cookies and try again.', 
+          'Storage Error', 'error', () => window.location.href = 'index.html');
+        return;
+      }
+      
       // Initialize anti-cheat
       antiCheat = initAntiCheat(true);
 
@@ -89,6 +111,7 @@
       if (!language) {
         showLanguageSelection();
       } else {
+        currentLanguage = language;
         loadQuestions(language);
       }
     }
@@ -101,18 +124,24 @@
     function selectLanguage(lang) {
       const changes = StorageManager.getLanguageChanges();
       if (changes >= 2) {
-        alert('You have reached the maximum number of language changes (2)');
+        // NON-BLOCKING: showAlert prevents JS blocking that desynchronizes timers
+        showAlert('You have reached the maximum number of language changes (2)', 
+          'Limit Reached', 'warning');
         return;
       }
 
       if (StorageManager.getLanguageChoice() !== lang) {
         StorageManager.incrementLanguageChanges();
+        // FIX: Clear question order when language changes
+        StorageManager.setMCQQuestionOrder(null);
       }
 
       StorageManager.setLanguageChoice(lang);
+      currentLanguage = lang;
+      
       document.querySelectorAll('.language-card').forEach(card => {
         card.classList.remove('selected');
-        if (card.onclick.toString().includes(`'${lang}'`)) {
+        if (card.querySelector('h3').textContent.toLowerCase().includes(lang)) {
           card.classList.add('selected');
         }
       });
@@ -129,6 +158,7 @@
       const msgEl = document.getElementById('language-changes');
       if (remaining > 0) {
         msgEl.textContent = `Language changes remaining: ${remaining}`;
+        msgEl.style.color = 'var(--accent-yellow)';
       } else {
         msgEl.textContent = 'No language changes remaining';
         msgEl.style.color = 'var(--accent-red)';
@@ -139,7 +169,9 @@
       try {
         // Check if CodeWarData is available
         if (typeof CodeWarData === 'undefined' || !CodeWarData.mcq) {
-          alert('Error: Question data not loaded. Please refresh the page.');
+          // NON-BLOCKING: alert() would pause timers and trigger blur events
+          showAlert('Error: Question data not loaded. Please refresh the page.', 
+            'Data Error', 'error', () => window.location.reload());
           return;
         }
 
@@ -150,18 +182,51 @@
         let langQuestions = CodeWarData.mcq[langKey] || [];
         
         if (langQuestions.length === 0) {
-          alert('No questions available for this language');
-          showLanguageSelection();
+          // NON-BLOCKING: Prevents focus theft that triggers anti-cheat
+          showAlert('No questions available for this language', 
+            'No Questions', 'warning', () => showLanguageSelection());
           return;
         }
         
-        // Shuffle and take up to 30 questions (or all if less than 30)
-        const maxQuestions = Math.min(30, langQuestions.length);
-        questions = shuffleArray(langQuestions).slice(0, maxQuestions);
+        // FIX: Persist question order to prevent reshuffling on refresh
+        let savedOrder = StorageManager.getMCQQuestionOrder();
+        
+        if (savedOrder && savedOrder.length > 0) {
+          // Restore saved order
+          const questionMap = {};
+          langQuestions.forEach(q => { questionMap[q.id] = q; });
+          
+          questions = savedOrder
+            .map(id => questionMap[id])
+            .filter(q => q !== undefined);
+          
+          // If some questions are missing, add them
+          if (questions.length < langQuestions.length) {
+            const existingIds = new Set(questions.map(q => q.id));
+            langQuestions.forEach(q => {
+              if (!existingIds.has(q.id)) {
+                questions.push(q);
+              }
+            });
+          }
+          
+          console.log('[MCQ] Restored question order from storage');
+        } else {
+          // First time - shuffle and save order
+          const maxQuestions = Math.min(20, langQuestions.length);
+          questions = shuffleArray(langQuestions).slice(0, maxQuestions);
+          
+          // Save the order
+          const orderArray = questions.map(q => q.id);
+          StorageManager.setMCQQuestionOrder(orderArray);
+          
+          console.log('[MCQ] Created new question order');
+        }
         
         if (questions.length === 0) {
-          alert('Error loading questions. Please try again.');
-          showLanguageSelection();
+          // NON-BLOCKING: showAlert doesn't steal focus or pause event loop
+          showAlert('Error loading questions. Please try again.', 
+            'Loading Error', 'error', () => showLanguageSelection());
           return;
         }
         
@@ -182,7 +247,9 @@
         displayQuestion(0);
       } catch (error) {
         console.error('Error loading questions:', error);
-        alert('An error occurred while loading questions. Please refresh the page.');
+        // NON-BLOCKING: Prevents timer desync during error display
+        showAlert('An error occurred while loading questions. Please refresh the page.', 
+          'Error', 'error', () => window.location.reload());
       }
     }
 
@@ -244,11 +311,15 @@
       question.options.forEach((option, optIndex) => {
         const li = document.createElement('li');
         li.className = 'option-item';
-        if (answers[question.id] === String.fromCharCode(65 + optIndex)) {
+        const optionLetter = String.fromCharCode(65 + optIndex);
+        
+        // Check if this option is selected
+        if (answers[question.id] === optionLetter) {
           li.classList.add('selected');
         }
-        li.innerHTML = `<span class="option-label">${String.fromCharCode(65 + optIndex)})</span> ${option || 'Option not available'}`;
-        li.onclick = () => selectOption(question.id, String.fromCharCode(65 + optIndex));
+        
+        li.innerHTML = `<span class="option-label">${optionLetter})</span> ${option || 'Option not available'}`;
+        li.onclick = () => selectOption(question.id, optionLetter);
         optionsEl.appendChild(li);
       });
       
@@ -267,11 +338,26 @@
           return;
         }
         answers[questionId] = option;
-        StorageManager.setMCQAnswer(questionId, option);
+        
+        // Save immediately
+        const saved = StorageManager.setMCQAnswer(questionId, option);
+        
+        // Update autosave status
+        const statusEl = document.getElementById('autosave-status');
+        if (saved) {
+          statusEl.textContent = '✓ Saved';
+          statusEl.style.color = 'var(--accent-green)';
+        } else {
+          statusEl.textContent = '⚠ Save failed';
+          statusEl.style.color = 'var(--accent-red)';
+        }
+        
+        // Refresh display
         displayQuestion(currentQuestionIndex);
       } catch (error) {
         console.error('Error selecting option:', error);
-        alert('Error saving answer. Please try again.');
+        // NON-BLOCKING: showToast for transient errors, doesn't interrupt exam
+        showToast('Error saving answer. Please try again.', 'error');
       }
     }
 
@@ -291,60 +377,115 @@
       roundTimer = new RoundTimer('mcq', ROUND_DURATIONS.mcq);
       roundTimer.start((expired, remaining) => {
         if (expired) {
-          submitQuiz(true);
+          submitQuiz(true);  // Auto-submit
         } else {
           const timeEl = document.getElementById('timer');
           timeEl.textContent = roundTimer.getFormattedTime();
-          if (remaining <= 300) { // 5 minutes
+          if (remaining <= 300) { // 5 minutes warning
             timeEl.classList.add('timer-warning');
           }
         }
       });
     }
 
-    function submitQuiz(autoSubmit = false) {
-      if (!autoSubmit && !confirm('Are you sure you want to submit? You cannot change answers after submission.')) {
+    async function submitQuiz(autoSubmit = false) {
+      // FIX: Prevent double submission
+      if (isSubmitting) {
+        console.log('[MCQ] Submission already in progress');
         return;
       }
-
+      
+      // NON-BLOCKING CONFIRMATION: Using showSubmitConfirm instead of confirm()
+      // confirm() blocks JS, steals focus, and triggers anti-cheat false positives
+      if (!autoSubmit) {
+        const answeredCount = Object.keys(answers).length;
+        showSubmitConfirm({
+          totalQuestions: questions.length,
+          answeredCount: answeredCount,
+          roundName: 'MCQ Quiz'
+        }, () => {
+          // User confirmed - proceed with submission
+          executeSubmit(false);
+        });
+        return;  // Wait for user confirmation via modal
+      }
+      
+      // Auto-submit (timer expired)
+      executeSubmit(true);
+    }
+    
+    // Actual submission logic (separated for non-blocking flow)
+    async function executeSubmit(autoSubmit) {
+      isSubmitting = true;
+      
       try {
-        roundTimer.stop();
+        // Stop timer and anti-cheat
+        if (roundTimer) roundTimer.prepareForSubmission();
         if (antiCheat) antiCheat.stop();
 
-        // Calculate score
+        // Show loading state
+        const submitBtn = document.getElementById('submit-btn');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Submitting...';
+        }
+
+        // FIX: Calculate score using server validation (or demo mode)
         let correct = 0;
         if (questions.length === 0) {
-          alert('No questions to submit');
+          // NON-BLOCKING: showAlert instead of alert()
+          showAlert('No questions to submit', 'Error', 'error');
+          isSubmitting = false;
           return;
         }
 
-        questions.forEach(q => {
-          if (!q || !q.id) return;
+        // Validate answers
+        for (const q of questions) {
+          if (!q || !q.id) continue;
           const userAnswer = answers[q.id];
-          if (userAnswer && q.answer) {
+          if (userAnswer) {
             try {
-              const correctAnswer = decodeAnswer(q.answer);
-              if (correctAnswer && userAnswer === correctAnswer) {
+              // Use the new server-side validation function
+              const result = await validateMCQAnswer(q.id, userAnswer, currentLanguage);
+              if (result.correct) {
                 correct++;
               }
             } catch (e) {
-              console.error('Error decoding answer for question', q.id, e);
+              console.error('Error validating answer for question', q.id, e);
             }
           }
-        });
+        }
 
-        const percentage = questions.length > 0 ? Math.max(0, Math.min(100, Math.round((correct / questions.length) * 100))) : 0;
+        const percentage = questions.length > 0 ? 
+          Math.max(0, Math.min(100, Math.round((correct / questions.length) * 100))) : 0;
+        
         StorageManager.setMCQScore(correct, percentage, questions.length);
+        
+        // FIX: Set current round to 'debug' (NOT 'completed')
         StorageManager.setCurrentRound('debug');
         
         if (autoSubmit) {
-          alert('Time expired! Your answers have been submitted automatically.');
+          // NON-BLOCKING: showAutoExit with countdown instead of alert()
+          // This prevents focus theft and allows clean redirect
+          showAutoExit('Time expired! Your answers have been submitted automatically.', 
+            'index.html', 3);
+        } else {
+          // Manual submission - redirect immediately
+          window.location.href = 'index.html';
         }
-        
-        window.location.href = 'index.html';
       } catch (error) {
         console.error('Error submitting quiz:', error);
-        alert('An error occurred while submitting. Please try again.');
+        // NON-BLOCKING: showAlert instead of blocking alert()
+        showAlert('An error occurred while submitting. Please try again.', 
+          'Submission Error', 'error');
+        isSubmitting = false;
+        
+        // Re-enable button
+        const submitBtn = document.getElementById('submit-btn');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Quiz';
+        }
       }
     }
   </script>

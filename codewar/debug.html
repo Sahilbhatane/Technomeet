@@ -22,6 +22,7 @@
       <div class="question-container">
         <div class="question-header">
           <h3>Faulty Code</h3>
+          <span id="autosave-status" style="color: var(--accent-green); font-size: 0.8em;"></span>
         </div>
         <div class="code-display" id="faulty-code"></div>
         
@@ -49,18 +50,20 @@
     </div>
   </div>
 
-  <script src="js/utils.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/auth.js"></script>
-  <script src="js/timer.js"></script>
-  <script src="js/anti_cheat.js"></script>
-  <script src="js/data.js"></script>
+  <script src="js/utils.js?v=3"></script>
+  <script src="js/storage.js?v=3"></script>
+  <script src="js/auth.js?v=3"></script>
+  <script src="js/timer.js?v=3"></script>
+  <script src="js/anti_cheat.js?v=3"></script>
+  <script src="js/data.js?v=3"></script>
   <script>
     let questions = [];
     let currentQuestionIndex = 0;
     let solutions = {};
     let roundTimer = null;
     let antiCheat = null;
+    let isSubmitting = false;  // FIX: Prevent double submission
+    let currentLanguage = null;
 
     // Check authentication and round access
     if (!requireAuth()) {
@@ -69,36 +72,57 @@
       const currentRound = StorageManager.getCurrentRound();
       const mcqScore = StorageManager.getMCQScore();
       
-      // Allow if MCQ is completed OR already in debug/ps/completed
-      if (!mcqScore && currentRound !== 'debug' && currentRound !== 'ps' && currentRound !== 'completed') {
-        alert('Please complete MCQ round first');
-        window.location.href = 'index.html';
+      // FIX: Proper round state validation
+      if (currentRound === 'completed') {
+        window.location.href = 'results.html';
+      } else if (currentRound === 'not_started' || currentRound === 'mcq') {
+        // MCQ not completed
+        if (!mcqScore) {
+          // NON-BLOCKING: showAlert prevents focus theft that triggers anti-cheat
+          showAlert('Please complete MCQ round first', 'Round Not Unlocked', 'warning', 
+            () => window.location.href = 'index.html');
+        } else {
+          // MCQ was completed but round state wasn't updated
+          StorageManager.setCurrentRound('debug');
+          initializeDebug();
+        }
       } else {
+        // Round is debug, ps, or completed - allow access
         initializeDebug();
       }
     }
 
     function initializeDebug() {
+      // Verify storage
+      if (!StorageManager.verifyStorageIntegrity()) {
+        // NON-BLOCKING: alert() would block JS and desync timers
+        showAlert('Browser storage is not working. Please enable cookies and try again.', 
+          'Storage Error', 'error', () => window.location.href = 'index.html');
+        return;
+      }
+      
       // Initialize anti-cheat
       antiCheat = initAntiCheat(true);
 
       // Get language from MCQ round
-      const language = StorageManager.getLanguageChoice();
-      if (!language) {
-        alert('Language not selected. Redirecting to MCQ round.');
-        window.location.href = 'mcq.html';
+      currentLanguage = StorageManager.getLanguageChoice();
+      if (!currentLanguage) {
+        // NON-BLOCKING: Prevents JS blocking during redirect
+        showAlert('Language not selected. Redirecting to MCQ round.', 
+          'Language Required', 'warning', () => window.location.href = 'mcq.html');
         return;
       }
 
-      loadQuestions(language);
+      loadQuestions(currentLanguage);
     }
 
     function loadQuestions(language) {
       try {
         // Check if CodeWarData is available
         if (typeof CodeWarData === 'undefined' || !CodeWarData.debug) {
-          alert('Error: Question data not loaded. Please refresh the page.');
-          window.location.href = 'index.html';
+          // NON-BLOCKING: Prevents timer desync and focus theft
+          showAlert('Error: Question data not loaded. Please refresh the page.', 
+            'Data Error', 'error', () => window.location.href = 'index.html');
           return;
         }
 
@@ -108,8 +132,9 @@
         questions = CodeWarData.debug[langKey] || [];
         
         if (questions.length === 0) {
-          alert('No debug questions available for this language');
-          window.location.href = 'index.html';
+          // NON-BLOCKING: showAlert doesn't steal focus or pause JS
+          showAlert('No debug questions available for this language', 
+            'No Questions', 'warning', () => window.location.href = 'index.html');
           return;
         }
 
@@ -126,8 +151,9 @@
         displayQuestion(0);
       } catch (error) {
         console.error('Error loading debug questions:', error);
-        alert('An error occurred while loading questions. Please refresh the page.');
-        window.location.href = 'index.html';
+        // NON-BLOCKING: Prevents anti-cheat false positives during error
+        showAlert('An error occurred while loading questions. Please refresh the page.', 
+          'Error', 'error', () => window.location.href = 'index.html');
       }
     }
 
@@ -156,6 +182,9 @@
         return;
       }
 
+      // Save current solution before navigating
+      saveCurrentSolution(false);
+
       currentQuestionIndex = index;
       const question = questions[index];
       
@@ -182,77 +211,104 @@
       renderQuestionNavigation();
     }
 
-    function saveSolution() {
+    function saveCurrentSolution(showFeedback = true) {
       try {
         if (currentQuestionIndex < 0 || currentQuestionIndex >= questions.length) {
-          alert('Invalid question');
-          return;
+          return false;
         }
 
         const question = questions[currentQuestionIndex];
         if (!question || !question.id) {
-          alert('Question not found');
-          return;
+          return false;
         }
 
         const solution = document.getElementById('solution-code').value;
         solutions[question.id] = solution;
-        StorageManager.setDebugAnswer(question.id, solution);
-        alert('Solution saved!');
+        const saved = StorageManager.setDebugAnswer(question.id, solution);
+        
+        // Update status
+        const statusEl = document.getElementById('autosave-status');
+        if (saved) {
+          statusEl.textContent = '✓ Saved';
+          statusEl.style.color = 'var(--accent-green)';
+        } else {
+          statusEl.textContent = '⚠ Save failed';
+          statusEl.style.color = 'var(--accent-red)';
+        }
+        
+        if (showFeedback && saved) {
+          // NON-BLOCKING: showToast for transient feedback instead of alert()
+          showToast('Solution saved!', 'success', 2000);
+        }
+        
+        return saved;
       } catch (error) {
         console.error('Error saving solution:', error);
-        alert('Error saving solution. Please try again.');
+        if (showFeedback) {
+          // NON-BLOCKING: showToast doesn't interrupt exam flow
+          showToast('Error saving solution. Please try again.', 'error');
+        }
+        return false;
       }
     }
 
-    function verifySolution() {
+    function saveSolution() {
+      saveCurrentSolution(true);
+    }
+
+    async function verifySolution() {
       if (currentQuestionIndex < 0 || currentQuestionIndex >= questions.length) {
-        alert('Invalid question');
+        // NON-BLOCKING: showToast for validation errors
+        showToast('Invalid question', 'error');
         return;
       }
 
       const question = questions[currentQuestionIndex];
       if (!question) {
-        alert('Question not found');
+        // NON-BLOCKING: showToast doesn't steal focus
+        showToast('Question not found', 'error');
         return;
       }
 
       const userSolution = document.getElementById('solution-code').value.trim();
       
       if (!userSolution) {
-        alert('Please enter your solution first');
+        // NON-BLOCKING: showAlert for user guidance without blocking JS
+        showAlert('Please enter your solution first', 'No Solution', 'warning');
         return;
       }
 
-      if (!question.correctCode) {
-        alert('Error: Correct solution not available');
-        return;
+      // FIX: Use server-side validation (or demo mode pattern matching)
+      try {
+        const result = await validateDebugSolution(question.id, userSolution, currentLanguage);
+        
+        const resultEl = document.getElementById('verification-result');
+        resultEl.style.display = 'block';
+        
+        if (result.correct) {
+          resultEl.innerHTML = `
+            <div style="background: var(--accent-green); color: var(--bg-primary); padding: 15px; border-radius: 5px;">
+              <strong>✓ Correct!</strong> Your solution fixes the bug properly.
+            </div>
+          `;
+        } else {
+          // Sanitize the hint to prevent XSS
+          const hint = sanitizeCode(result.feedback || question.hint || 'Keep trying!');
+          resultEl.innerHTML = `
+            <div style="background: var(--accent-red); color: var(--text-primary); padding: 15px; border-radius: 5px;">
+              <strong>✗ Not quite right</strong> Your solution doesn't fully fix the issue.
+              <p style="margin-top: 10px; font-size: 0.9em;">Hint: ${hint}</p>
+            </div>
+          `;
+        }
+        
+        // Save solution
+        saveCurrentSolution(false);
+      } catch (error) {
+        console.error('Error verifying solution:', error);
+        // NON-BLOCKING: showToast for transient errors
+        showToast('Error verifying solution. Please try again.', 'error');
       }
-
-      // Compare with correct solution
-      const isCorrect = compareCode(userSolution, question.correctCode);
-      
-      const resultEl = document.getElementById('verification-result');
-      resultEl.style.display = 'block';
-      
-      if (isCorrect) {
-        resultEl.innerHTML = `
-          <div style="background: var(--accent-green); color: var(--bg-primary); padding: 15px; border-radius: 5px;">
-            <strong>✓ Correct!</strong> Your solution matches the expected output.
-          </div>
-        `;
-      } else {
-        const hint = question.explanation || 'Keep trying!';
-        resultEl.innerHTML = `
-          <div style="background: var(--accent-red); color: var(--text-primary); padding: 15px; border-radius: 5px;">
-            <strong>✗ Incorrect</strong> Your solution does not match. Keep trying!
-            <p style="margin-top: 10px; font-size: 0.9em;">Hint: ${hint}</p>
-          </div>
-        `;
-      }
-      
-      // Save solution
-      saveSolution();
     }
 
     function previousQuestion() {
@@ -282,50 +338,121 @@
       });
     }
 
-    function submitDebug(autoSubmit = false) {
-      if (!autoSubmit && !confirm('Are you sure you want to submit? You cannot change solutions after submission.')) {
+    async function submitDebug(autoSubmit = false) {
+      // FIX: Prevent double submission
+      if (isSubmitting) {
+        console.log('[DEBUG] Submission already in progress');
         return;
       }
+      
+      // NON-BLOCKING CONFIRMATION: showSubmitConfirm instead of confirm()
+      // confirm() blocks JS, steals focus, and triggers anti-cheat false positives
+      if (!autoSubmit) {
+        const answeredCount = questions.filter(q => solutions[q.id] && solutions[q.id].trim()).length;
+        showSubmitConfirm({
+          totalQuestions: questions.length,
+          answeredCount: answeredCount,
+          roundName: 'Debug Round'
+        }, () => {
+          // User confirmed - proceed with submission
+          executeDebugSubmit(false);
+        });
+        return;  // Wait for user confirmation via modal
+      }
+      
+      // Auto-submit (timer expired)
+      executeDebugSubmit(true);
+    }
+    
+    // Actual submission logic (separated for non-blocking flow)
+    async function executeDebugSubmit(autoSubmit) {
+      isSubmitting = true;
 
       try {
-        roundTimer.stop();
+        // Save current solution first
+        saveCurrentSolution(false);
+        
+        // Stop timer and anti-cheat
+        if (roundTimer) roundTimer.prepareForSubmission();
         if (antiCheat) antiCheat.stop();
+
+        // Show loading state
+        const submitBtn = document.getElementById('submit-btn');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Submitting...';
+        }
 
         // Calculate score
         let correct = 0;
         if (questions.length === 0) {
-          alert('No questions to submit');
+          // NON-BLOCKING: showAlert instead of alert()
+          showAlert('No questions to submit', 'Error', 'error');
+          isSubmitting = false;
           return;
         }
 
-        questions.forEach(q => {
-          if (!q || !q.id) return;
+        // Validate each solution
+        for (const q of questions) {
+          if (!q || !q.id) continue;
           const userSolution = solutions[q.id] || '';
-          if (userSolution && q.correctCode) {
+          if (userSolution.trim()) {
             try {
-              if (compareCode(userSolution, q.correctCode)) {
+              const result = await validateDebugSolution(q.id, userSolution, currentLanguage);
+              if (result.correct) {
                 correct++;
               }
             } catch (e) {
-              console.error('Error comparing code for question', q.id, e);
+              console.error('Error validating solution for question', q.id, e);
             }
           }
-        });
+        }
 
-        const percentage = questions.length > 0 ? Math.max(0, Math.min(100, Math.round((correct / questions.length) * 100))) : 0;
+        const percentage = questions.length > 0 ? 
+          Math.max(0, Math.min(100, Math.round((correct / questions.length) * 100))) : 0;
+        
         StorageManager.setDebugScore(correct, percentage);
+        
+        // FIX: Set current round to 'ps' (next round)
         StorageManager.setCurrentRound('ps');
         
         if (autoSubmit) {
-          alert('Time expired! Your solutions have been submitted automatically.');
+          // NON-BLOCKING: showAutoExit with countdown instead of alert()
+          showAutoExit('Time expired! Your solutions have been submitted automatically.', 
+            'index.html', 3);
+        } else {
+          // Manual submission - redirect immediately
+          window.location.href = 'index.html';
         }
-        
-        window.location.href = 'index.html';
       } catch (error) {
         console.error('Error submitting debug round:', error);
-        alert('An error occurred while submitting. Please try again.');
+        // NON-BLOCKING: showAlert instead of blocking alert()
+        showAlert('An error occurred while submitting. Please try again.', 
+          'Submission Error', 'error');
+        isSubmitting = false;
+        
+        const submitBtn = document.getElementById('submit-btn');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Round';
+        }
       }
     }
+
+    // Auto-save on input
+    document.addEventListener('DOMContentLoaded', () => {
+      const codeEditor = document.getElementById('solution-code');
+      if (codeEditor) {
+        let saveTimeout = null;
+        codeEditor.addEventListener('input', () => {
+          // Debounced auto-save
+          clearTimeout(saveTimeout);
+          saveTimeout = setTimeout(() => {
+            saveCurrentSolution(false);
+          }, 2000);  // Auto-save after 2 seconds of inactivity
+        });
+      }
+    });
   </script>
 </body>
 </html>

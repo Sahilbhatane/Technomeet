@@ -22,6 +22,7 @@
       <div class="question-container">
         <div class="question-header">
           <h2 id="problem-title"></h2>
+          <span id="autosave-status" style="color: var(--accent-green); font-size: 0.8em;"></span>
         </div>
         <div class="question-text" id="problem-description"></div>
         <div style="background: var(--bg-primary); padding: 15px; border-radius: 5px; margin: 20px 0;">
@@ -57,19 +58,21 @@
     </div>
   </div>
 
-  <script src="js/utils.js?v=2"></script>
-  <script src="js/storage.js?v=2"></script>
-  <script src="js/auth.js?v=2"></script>
-  <script src="js/timer.js?v=2"></script>
-  <script src="js/anti_cheat.js?v=2"></script>
-  <script src="js/code_verifier.js?v=2"></script>
-  <script src="js/data.js?v=2"></script>
+  <script src="js/utils.js?v=3"></script>
+  <script src="js/storage.js?v=3"></script>
+  <script src="js/auth.js?v=3"></script>
+  <script src="js/timer.js?v=3"></script>
+  <script src="js/anti_cheat.js?v=3"></script>
+  <script src="js/data.js?v=3"></script>
+  <!-- Note: code_verifier.js is no longer needed - validation is in data.js -->
   <script>
     let problems = [];
     let currentProblemIndex = 0;
     let solutions = {};
     let roundTimer = null;
     let antiCheat = null;
+    let isSubmitting = false;  // FIX: Prevent double submission
+    let currentLanguage = null;
 
     // Check authentication and round access
     if (!requireAuth()) {
@@ -78,61 +81,76 @@
       const currentRound = StorageManager.getCurrentRound();
       const debugScore = StorageManager.getDebugScore();
       
-      // Allow if Debug is completed OR already in ps/completed
-      if (!debugScore && currentRound !== 'ps' && currentRound !== 'completed') {
-        alert('Please complete Debug round first');
-        window.location.href = 'index.html';
+      // FIX: Proper round state validation
+      if (currentRound === 'completed') {
+        window.location.href = 'results.html';
+      } else if (currentRound === 'not_started' || currentRound === 'mcq' || currentRound === 'debug') {
+        // Need to complete debug first
+        if (!debugScore) {
+          // NON-BLOCKING: showAlert prevents focus theft that triggers anti-cheat
+          showAlert('Please complete Debug round first', 'Round Not Unlocked', 'warning', 
+            () => window.location.href = 'index.html');
+        } else {
+          // Debug was completed but round state wasn't updated
+          StorageManager.setCurrentRound('ps');
+          initializePS();
+        }
       } else {
+        // Round is ps or completed - allow access
         initializePS();
       }
     }
 
     function initializePS() {
-      // Initialize limited anti-cheat (no focus lock)
+      // Verify storage
+      if (!StorageManager.verifyStorageIntegrity()) {
+        // NON-BLOCKING: alert() would block JS and desync timers
+        showAlert('Browser storage is not working. Please enable cookies and try again.', 
+          'Storage Error', 'error', () => window.location.href = 'index.html');
+        return;
+      }
+      
+      // PS round allows external IDE - limited anti-cheat
       if (typeof initAntiCheat !== 'undefined') {
-        antiCheat = initAntiCheat(false);
+        antiCheat = initAntiCheat(false);  // Disabled
         if (antiCheat) {
           antiCheat.disableForPS();
         }
       }
 
       // Get language from MCQ round
-      const language = StorageManager.getLanguageChoice();
-      if (!language) {
-        alert('Language not selected. Redirecting to MCQ round.');
-        window.location.href = 'mcq.html';
+      currentLanguage = StorageManager.getLanguageChoice();
+      if (!currentLanguage) {
+        // NON-BLOCKING: Prevents JS blocking during redirect
+        showAlert('Language not selected. Redirecting to MCQ round.', 
+          'Language Required', 'warning', () => window.location.href = 'mcq.html');
         return;
       }
 
-      loadProblems(language);
+      loadProblems(currentLanguage);
     }
 
     function loadProblems(language) {
       try {
         // Check if CodeWarData is available
         if (typeof CodeWarData === 'undefined' || !CodeWarData.ps) {
-          alert('Error: Problem data not loaded. Please refresh the page.');
-          window.location.href = 'index.html';
+          // NON-BLOCKING: Prevents timer desync and focus theft
+          showAlert('Error: Problem data not loaded. Please refresh the page.', 
+            'Data Error', 'error', () => window.location.href = 'index.html');
           return;
         }
 
         problems = CodeWarData.ps || [];
         
         if (problems.length === 0) {
-          alert('No problems available');
-          window.location.href = 'index.html';
+          // NON-BLOCKING: showAlert doesn't steal focus or pause JS
+          showAlert('No problems available', 
+            'No Problems', 'warning', () => window.location.href = 'index.html');
           return;
         }
 
-        // Load saved solutions
-        const savedSolution = StorageManager.getPSSolution();
-        if (savedSolution) {
-          try {
-            solutions = JSON.parse(savedSolution);
-          } catch (e) {
-            solutions = {};
-          }
-        }
+        // FIX: Load saved solutions using new per-problem storage
+        solutions = StorageManager.getPSSolutions();
         
         // Render problem navigation
         renderProblemNavigation();
@@ -144,8 +162,9 @@
         displayProblem(0);
       } catch (error) {
         console.error('Error loading problems:', error);
-        alert('An error occurred while loading problems. Please refresh the page.');
-        window.location.href = 'index.html';
+        // NON-BLOCKING: Prevents anti-cheat false positives during error
+        showAlert('An error occurred while loading problems. Please refresh the page.', 
+          'Error', 'error', () => window.location.href = 'index.html');
       }
     }
 
@@ -157,7 +176,7 @@
         btn.className = 'question-number-btn';
         btn.textContent = index + 1;
         btn.onclick = () => displayProblem(index);
-        if (solutions[p.id]) {
+        if (solutions[p.id] && solutions[p.id].trim()) {
           btn.classList.add('answered');
         }
         if (index === currentProblemIndex) {
@@ -173,6 +192,9 @@
         console.error('Invalid problem index:', index);
         return;
       }
+
+      // Save current solution before navigating
+      saveCurrentSolution(false);
 
       currentProblemIndex = index;
       const problem = problems[index];
@@ -202,61 +224,77 @@
       renderProblemNavigation();
     }
 
-    function saveSolution() {
+    function saveCurrentSolution(showFeedback = true) {
       try {
         if (currentProblemIndex < 0 || currentProblemIndex >= problems.length) {
-          alert('Invalid problem');
-          return;
+          return false;
         }
 
         const problem = problems[currentProblemIndex];
         if (!problem || !problem.id) {
-          alert('Problem not found');
-          return;
+          return false;
         }
 
         const solution = document.getElementById('solution-code').value;
         solutions[problem.id] = solution;
-        StorageManager.setPSSolution(JSON.stringify(solutions));
-        alert('Solution saved!');
+        
+        // FIX: Use per-problem storage
+        const saved = StorageManager.setPSSolution(problem.id, solution);
+        
+        // Update status
+        const statusEl = document.getElementById('autosave-status');
+        if (saved) {
+          statusEl.textContent = '✓ Saved';
+          statusEl.style.color = 'var(--accent-green)';
+        } else {
+          statusEl.textContent = '⚠ Save failed';
+          statusEl.style.color = 'var(--accent-red)';
+        }
+        
+        if (showFeedback && saved) {
+          // NON-BLOCKING: showToast for transient feedback instead of alert()
+          showToast('Solution saved!', 'success', 2000);
+        }
+        
+        return saved;
       } catch (error) {
         console.error('Error saving solution:', error);
-        alert('Error saving solution. Please try again.');
+        if (showFeedback) {
+          // NON-BLOCKING: showToast doesn't interrupt exam flow
+          showToast('Error saving solution. Please try again.', 'error');
+        }
+        return false;
       }
     }
 
-    function runTestCases() {
+    function saveSolution() {
+      saveCurrentSolution(true);
+    }
+
+    async function runTestCases() {
       const problem = problems[currentProblemIndex];
       const userCode = document.getElementById('solution-code').value.trim();
       
       if (!userCode) {
-        alert('Please write your solution first');
+        // NON-BLOCKING: showAlert for user guidance without blocking JS
+        showAlert('Please write your solution first', 'No Solution', 'warning');
         return;
       }
 
-      // Get language
-      const language = StorageManager.getLanguageChoice();
-      const langMap = { c: 'c', cpp: 'cpp', java: 'java', python: 'python' };
-      const langKey = langMap[language] || 'c';
-      
-      // Get test cases for this language
-      const testCases = (problem.testCases && problem.testCases[langKey]) ? problem.testCases[langKey] : [];
-      
-      if (testCases.length === 0) {
-        alert('No test cases available for this language');
-        return;
+      try {
+        // FIX: Use server-side validation function from data.js
+        const validation = await validatePSSolution(problem.id, userCode, currentLanguage);
+        
+        // Display results
+        displayTestResults(validation.results, validation.summary);
+        
+        // Save solution
+        saveCurrentSolution(false);
+      } catch (error) {
+        console.error('Error running test cases:', error);
+        // NON-BLOCKING: showToast for transient errors
+        showToast('Error running test cases. Please try again.', 'error');
       }
-
-      // Verify code
-      const verifier = new CodeVerifier(langKey);
-      const results = verifier.verifyCode(userCode, testCases);
-      const summary = verifier.getSummary(results);
-
-      // Display results
-      displayTestResults(results, summary);
-      
-      // Save solution
-      saveSolution();
     }
 
     function displayTestResults(results, summary) {
@@ -268,32 +306,42 @@
       
       // Display individual test cases
       listEl.innerHTML = '';
-      results.forEach(result => {
-        const testCaseEl = document.createElement('div');
-        testCaseEl.className = `test-case ${result.passed ? 'passed' : 'failed'}`;
-        testCaseEl.innerHTML = `
-          <div class="test-case-header">
-            <strong>Test Case ${result.testCase}</strong>
-            <span class="test-case-status ${result.passed ? 'passed' : 'failed'}">
-              ${result.passed ? 'PASSED' : 'FAILED'}
-            </span>
-          </div>
-          <div style="margin-top: 10px;">
-            <p><strong>Input:</strong> ${result.input}</p>
-            <p><strong>Expected:</strong> ${result.expected}</p>
-            <p><strong>Your Output:</strong> ${result.actual}</p>
-          </div>
-        `;
-        listEl.appendChild(testCaseEl);
-      });
+      
+      if (!results || results.length === 0) {
+        listEl.innerHTML = '<p style="color: var(--text-secondary);">No test results available.</p>';
+      } else {
+        results.forEach(result => {
+          const testCaseEl = document.createElement('div');
+          testCaseEl.className = `test-case ${result.passed ? 'passed' : 'failed'}`;
+          testCaseEl.innerHTML = `
+            <div class="test-case-header">
+              <strong>Test Case ${result.testCase}</strong>
+              <span class="test-case-status ${result.passed ? 'passed' : 'failed'}">
+                ${result.passed ? 'PASSED' : 'FAILED'}
+              </span>
+            </div>
+            <div style="margin-top: 10px;">
+              <p><strong>Input:</strong> ${sanitizeCode(result.input)}</p>
+              <p><strong>Expected:</strong> ${sanitizeCode(result.expected)}</p>
+              <p><strong>Your Output:</strong> ${sanitizeCode(result.actual)}</p>
+            </div>
+          `;
+          listEl.appendChild(testCaseEl);
+        });
+      }
       
       // Display summary
+      const safeTotal = summary?.total || 0;
+      const safePassed = summary?.passed || 0;
+      const safeFailed = summary?.failed || 0;
+      const safePercentage = summary?.percentage || 0;
+      
       summaryEl.innerHTML = `
         <h3 style="color: var(--accent-cyan);">Summary</h3>
-        <p><strong>Total Test Cases:</strong> ${summary.total}</p>
-        <p><strong>Passed:</strong> <span style="color: var(--accent-green);">${summary.passed}</span></p>
-        <p><strong>Failed:</strong> <span style="color: var(--accent-red);">${summary.failed}</span></p>
-        <p><strong>Score:</strong> ${summary.percentage}%</p>
+        <p><strong>Total Test Cases:</strong> ${safeTotal}</p>
+        <p><strong>Passed:</strong> <span style="color: var(--accent-green);">${safePassed}</span></p>
+        <p><strong>Failed:</strong> <span style="color: var(--accent-red);">${safeFailed}</span></p>
+        <p><strong>Score:</strong> ${safePercentage}%</p>
       `;
     }
 
@@ -324,52 +372,117 @@
       });
     }
 
-    function submitPS(autoSubmit = false) {
-      if (!autoSubmit && !confirm('Are you sure you want to submit? You cannot change solutions after submission.')) {
+    async function submitPS(autoSubmit = false) {
+      // FIX: Prevent double submission
+      if (isSubmitting) {
+        console.log('[PS] Submission already in progress');
         return;
       }
-
-      roundTimer.stop();
-      if (antiCheat) antiCheat.stop();
-
-      // Calculate total score from test cases
-      const language = StorageManager.getLanguageChoice();
-      const langMap = { c: 'c', cpp: 'cpp', java: 'java', python: 'python' };
-      const langKey = langMap[language] || 'c';
       
-      let totalPassed = 0;
-      let totalTests = 0;
+      // NON-BLOCKING CONFIRMATION: showSubmitConfirm instead of confirm()
+      // confirm() blocks JS, steals focus, and triggers anti-cheat false positives
+      if (!autoSubmit) {
+        const answeredCount = problems.filter(p => solutions[p.id] && solutions[p.id].trim()).length;
+        showSubmitConfirm({
+          totalQuestions: problems.length,
+          answeredCount: answeredCount,
+          roundName: 'Problem Statement Round'
+        }, () => {
+          // User confirmed - proceed with submission
+          executePSSubmit(false);
+        });
+        return;  // Wait for user confirmation via modal
+      }
       
-      problems.forEach(problem => {
-        if (!problem || !problem.id) return;
-        const solution = solutions[problem.id] || '';
-        if (solution) {
-          const testCases = (problem.testCases && problem.testCases[langKey]) ? problem.testCases[langKey] : [];
-          if (testCases.length > 0) {
+      // Auto-submit (timer expired)
+      executePSSubmit(true);
+    }
+    
+    // Actual submission logic (separated for non-blocking flow)
+    async function executePSSubmit(autoSubmit) {
+      isSubmitting = true;
+
+      try {
+        // Save current solution first
+        saveCurrentSolution(false);
+        
+        // Stop timer
+        if (roundTimer) roundTimer.prepareForSubmission();
+        if (antiCheat) antiCheat.stop();
+
+        // Show loading state
+        const submitBtn = document.getElementById('submit-btn');
+        if (submitBtn) {
+          submitBtn.disabled = true;
+          submitBtn.textContent = 'Submitting...';
+        }
+
+        // Calculate total score
+        let totalPassed = 0;
+        let totalTests = 0;
+        
+        for (const problem of problems) {
+          if (!problem || !problem.id) continue;
+          const solution = solutions[problem.id] || '';
+          
+          if (solution.trim()) {
             try {
-              const verifier = new CodeVerifier(langKey);
-              const results = verifier.verifyCode(solution, testCases);
-              if (results && Array.isArray(results)) {
-                totalPassed += results.filter(r => r && r.passed).length;
-                totalTests += results.length;
+              const validation = await validatePSSolution(problem.id, solution, currentLanguage);
+              if (validation.results && Array.isArray(validation.results)) {
+                totalPassed += validation.results.filter(r => r && r.passed).length;
+                totalTests += validation.results.length;
               }
             } catch (e) {
-              console.error('Error verifying code for problem', problem.id, e);
+              console.error('Error validating solution for problem', problem.id, e);
             }
           }
         }
-      });
-      
-      const score = totalTests > 0 ? Math.max(0, Math.min(100, Math.round((totalPassed / totalTests) * 100))) : 0;
-      StorageManager.setPSScore(score);
-      StorageManager.setCurrentRound('completed');
-      
-      if (autoSubmit) {
-        alert('Time expired! Your solutions have been submitted automatically.');
+        
+        const score = totalTests > 0 ? 
+          Math.max(0, Math.min(100, Math.round((totalPassed / totalTests) * 100))) : 0;
+        
+        StorageManager.setPSScore(score);
+        
+        // FIX: Now we set 'completed' since this is the LAST round
+        StorageManager.setCurrentRound('completed');
+        
+        if (autoSubmit) {
+          // NON-BLOCKING: showAutoExit with countdown instead of alert()
+          showAutoExit('Time expired! Your solutions have been submitted automatically.', 
+            'results.html', 3);
+        } else {
+          // Manual submission - redirect immediately
+          window.location.href = 'results.html';
+        }
+      } catch (error) {
+        console.error('Error submitting PS round:', error);
+        // NON-BLOCKING: showAlert instead of blocking alert()
+        showAlert('An error occurred while submitting. Please try again.', 
+          'Submission Error', 'error');
+        isSubmitting = false;
+        
+        const submitBtn = document.getElementById('submit-btn');
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Submit Round';
+        }
       }
-      
-      window.location.href = 'results.html';
     }
+
+    // Auto-save on input
+    document.addEventListener('DOMContentLoaded', () => {
+      const codeEditor = document.getElementById('solution-code');
+      if (codeEditor) {
+        let saveTimeout = null;
+        codeEditor.addEventListener('input', () => {
+          // Debounced auto-save
+          clearTimeout(saveTimeout);
+          saveTimeout = setTimeout(() => {
+            saveCurrentSolution(false);
+          }, 2000);  // Auto-save after 2 seconds of inactivity
+        });
+      }
+    });
   </script>
 </body>
 </html>

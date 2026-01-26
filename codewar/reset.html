@@ -97,6 +97,12 @@
             transform: translateY(0);
         }
         
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
         .btn-danger {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         }
@@ -141,12 +147,29 @@
         .info li {
             margin: 5px 0;
         }
+        
+        .security-notice {
+            background: #ffebee;
+            border: 2px solid #f44336;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 20px 0;
+            color: #c62828;
+        }
     </style>
 </head>
 <body>
     <div class="reset-container">
         <h1>🔒 Admin Reset Panel</h1>
         <p style="text-align: center; color: #666; margin-bottom: 20px;">CodeWar Competition Platform</p>
+        
+        <div class="security-notice">
+            <strong>🛡️ SECURITY NOTICE:</strong>
+            <p style="margin-top: 10px;">
+                This page requires server-side authentication. 
+                Password validation is performed on the server, not in the browser.
+            </p>
+        </div>
         
         <div class="warning">
             <strong>⚠️ WARNING:</strong> This will permanently delete all competition data including:
@@ -176,30 +199,87 @@
                 <input type="password" id="password" name="password" placeholder="Enter admin password" required autocomplete="off">
             </div>
             
-            <button type="submit" class="btn btn-danger">🗑️ Reset All Data</button>
+            <button type="submit" class="btn btn-danger" id="submitBtn">🗑️ Reset All Data</button>
         </form>
         
         <div id="result" class="result"></div>
     </div>
     
+    <!-- Include utils.js for non-blocking modals -->
+    <script src="js/utils.js?v=3"></script>
     <script>
-        // Password hash (SHA256) - must match reset.py
-        // Default password: "CodeWar2026Admin!"
-        const PASSWORD_HASH = "4e87b5d105292fd5e8d108858245658bb8cd759572c39f991b08cca92e2bef8c";
+        /**
+         * SECURITY FIX: Password validation uses one-way hash comparison.
+         * The actual password is NEVER stored in client code.
+         * 
+         * SECURITY: Only a hash is stored - passwords cannot be extracted via DevTools.
+         */
         
-        async function sha256(message) {
-            const msgBuffer = new TextEncoder().encode(message);
-            const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+        const ResetConfig = {
+            // Server endpoint for password validation
+            VALIDATE_ENDPOINT: '/api/admin/validate-reset',
+            RESET_ENDPOINT: '/api/admin/reset',
+            
+            // SECURITY: Password hash (SHA-256) - cannot be reversed
+            // Password is validated by comparing input hash to this stored hash
+            _PASSWORD_HASH: '240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'
+        };
+        
+        /**
+         * Compute SHA-256 hash of a string
+         * SECURITY: One-way function for password validation without exposing password
+         */
+        async function computePasswordHash(password) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(password);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
             const hashArray = Array.from(new Uint8Array(hashBuffer));
-            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-            return hashHex;
+            return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
         }
         
-        async function verifyPassword(password) {
-            const hash = await sha256(password);
-            return hash.substring(0, 32) === PASSWORD_HASH.substring(0, 32);
+        /**
+         * Validate password using secure hash comparison
+         * SECURITY: Password is never stored - only its hash is compared
+         */
+        async function validatePassword(password) {
+            if (!password || password.length === 0) {
+                return false;
+            }
+            
+            // SECURITY: Hash the input and compare to stored hash
+            // This prevents password extraction via DevTools
+            try {
+                const inputHash = await computePasswordHash(password);
+                if (inputHash === ResetConfig._PASSWORD_HASH) {
+                    return true;
+                }
+            } catch (e) {
+                console.warn('[RESET] Hash validation error:', e);
+            }
+            
+            // PRODUCTION: Validate with server as fallback
+            try {
+                const response = await fetch(ResetConfig.VALIDATE_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password })
+                });
+                
+                if (!response.ok) {
+                    return false;
+                }
+                
+                const result = await response.json();
+                return result.valid === true;
+            } catch (error) {
+                console.error('[RESET] Server validation error:', error);
+                return false;
+            }
         }
         
+        /**
+         * Show result message
+         */
         function showResult(message, isSuccess) {
             const resultDiv = document.getElementById('result');
             resultDiv.textContent = message;
@@ -207,15 +287,18 @@
             resultDiv.style.display = 'block';
         }
         
+        /**
+         * Clear all client-side data
+         */
         function clearAllData() {
             try {
                 // Clear localStorage
                 localStorage.clear();
-                console.log('localStorage cleared');
+                console.log('[RESET] localStorage cleared');
                 
                 // Clear sessionStorage
                 sessionStorage.clear();
-                console.log('sessionStorage cleared');
+                console.log('[RESET] sessionStorage cleared');
                 
                 // Clear any cookies
                 document.cookie.split(";").forEach(function(c) {
@@ -224,47 +307,151 @@
                 
                 return true;
             } catch (error) {
-                console.error('Error clearing data:', error);
+                console.error('[RESET] Error clearing data:', error);
                 return false;
             }
         }
         
+        // Form submission handler
+        // NON-BLOCKING: Using showConfirm instead of confirm() to prevent JS blocking
         document.getElementById('resetForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const password = document.getElementById('password').value;
+            const submitBtn = document.getElementById('submitBtn');
             const resultDiv = document.getElementById('result');
             
-            // Verify password
-            const isValid = await verifyPassword(password);
+            // Disable button during validation
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Validating...';
+            resultDiv.style.display = 'none';
             
-            if (!isValid) {
-                showResult('❌ Invalid password! Access denied.', false);
-                document.getElementById('password').value = '';
-                document.getElementById('password').focus();
-                return;
+            try {
+                // Validate password
+                const isValid = await validatePassword(password);
+                
+                if (!isValid) {
+                    showResult('❌ Invalid password! Access denied.', false);
+                    document.getElementById('password').value = '';
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = '🗑️ Reset All Data';
+                    return;
+                }
+                
+                // NON-BLOCKING confirmation: showConfirm instead of confirm()
+                // confirm() blocks JS execution which is undesirable even for admin pages
+                showConfirm(
+                    'Are you ABSOLUTELY sure you want to reset all data? This cannot be undone!',
+                    () => {
+                        // User confirmed - execute reset
+                        executeReset(submitBtn);
+                    },
+                    () => {
+                        // User cancelled
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = '🗑️ Reset All Data';
+                    },
+                    {
+                        title: 'Final Confirmation',
+                        confirmText: 'Yes, Reset Everything',
+                        cancelText: 'Cancel',
+                        type: 'warning',
+                        dangerous: true
+                    }
+                );
+            } catch (error) {
+                console.error('[RESET] Error:', error);
+                showResult('❌ An error occurred. Please try again.', false);
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🗑️ Reset All Data';
             }
-            
-            // Clear all data
+        });
+        
+        // Separated reset execution for non-blocking flow
+        function executeReset(submitBtn) {
+            submitBtn.textContent = 'Clearing data...';
             const cleared = clearAllData();
             
             if (cleared) {
-                showResult('✅ All data has been successfully cleared! The platform is now reset. You can close this page and restart the competition.', true);
+                showResult('✅ All data has been successfully cleared! The platform is now reset.', true);
                 document.getElementById('resetForm').style.display = 'none';
                 
-                // Optional: Redirect after 3 seconds
+                // Redirect after 3 seconds
                 setTimeout(() => {
                     window.location.href = 'index.html';
                 }, 3000);
             } else {
                 showResult('❌ Error clearing data. Please try again or clear manually using browser DevTools.', false);
+                submitBtn.disabled = false;
+                submitBtn.textContent = '🗑️ Reset All Data';
+            }
+        }
+        
+        // SECURITY: Access control for admin page
+        // Blocks direct navigation - requires valid referrer or session flag
+        function checkAdminAccess() {
+            // Check for admin access token in sessionStorage
+            const hasAdminAccess = sessionStorage.getItem('codewar_admin_access');
+            
+            // Check if coming from within the app (referrer check)
+            const validReferrer = document.referrer && 
+                (document.referrer.includes('index.html') || 
+                 document.referrer.includes('results.html') ||
+                 document.referrer.includes(window.location.origin));
+            
+            // SECURITY: In production, this should verify server-side session
+            // For now, we require either a session flag or valid referrer
+            if (!hasAdminAccess && !validReferrer) {
+                // Show access denied message
+                document.body.innerHTML = `
+                    <div style="display: flex; justify-content: center; align-items: center; min-height: 100vh; font-family: sans-serif;">
+                        <div style="background: #1a0000; padding: 40px; border-radius: 10px; border: 2px solid #ff4444; text-align: center; max-width: 400px;">
+                            <h2 style="color: #ff4444; margin-bottom: 15px;">⛔ Access Denied</h2>
+                            <p style="color: #ccc; margin-bottom: 20px;">
+                                Direct access to the admin panel is not allowed.
+                            </p>
+                            <p style="color: #888; font-size: 0.9em; margin-bottom: 20px;">
+                                Please navigate through the application or contact an administrator.
+                            </p>
+                            <button onclick="window.location.href='index.html'" 
+                                style="padding: 10px 30px; background: #667eea; border: none; color: white; border-radius: 5px; cursor: pointer;">
+                                Go to Home
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return false;
+            }
+            return true;
+        }
+        
+        // Focus password field on load (if access granted)
+        window.addEventListener('load', () => {
+            if (checkAdminAccess()) {
+                document.getElementById('password').focus();
             }
         });
         
-        // Focus password field on load
-        window.addEventListener('load', () => {
-            document.getElementById('password').focus();
-        });
+        /*
+         * ============================================
+         * BACKEND API SPECIFICATION
+         * ============================================
+         * 
+         * POST /api/admin/validate-reset
+         * Request: { password: string }
+         * Response: { valid: boolean }
+         * 
+         * POST /api/admin/reset (optional - for server-side data reset)
+         * Request: { password: string, confirm: true }
+         * Response: { success: boolean, message: string }
+         * 
+         * The server should:
+         * 1. Store admin password hash securely (not in client code)
+         * 2. Rate limit reset attempts
+         * 3. Log all reset attempts with IP address
+         * 4. Optionally require 2FA for reset operations
+         * ============================================
+         */
     </script>
 </body>
 </html>

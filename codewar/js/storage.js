@@ -41,7 +41,8 @@ const StorageManager = {
     FINGERPRINT: 'codewar_fingerprint',
     
     // Anti-cheat
-    LAST_WARNING_TIME: 'codewar_last_warning_time'
+    LAST_WARNING_TIME: 'codewar_last_warning_time',
+    NETWORK_REQUESTS: 'codewar_network_requests'  // Track suspicious network activity
   },
 
   // ============================================
@@ -223,6 +224,20 @@ const StorageManager = {
 
   setLastWarningTime(timestamp) {
     return this.set(this.STORAGE_KEYS.LAST_WARNING_TIME, timestamp);
+  },
+
+  // Network activity tracking for anti-cheat
+  getNetworkRequests() {
+    return this.get(this.STORAGE_KEYS.NETWORK_REQUESTS) || 0;
+  },
+
+  incrementNetworkRequests() {
+    const current = this.getNetworkRequests();
+    return this.set(this.STORAGE_KEYS.NETWORK_REQUESTS, current + 1);
+  },
+
+  setNetworkRequests(count) {
+    return this.set(this.STORAGE_KEYS.NETWORK_REQUESTS, count);
   },
 
   getTabSwitches() {

@@ -41,6 +41,11 @@ class AntiCheatSystem {
     this._originalFetch = null;
     this._originalXHROpen = null;
     
+    // Grace period - 5 seconds after page load before penalties activate
+    this._gracePeriodMs = 5000;
+    this._initTimestamp = Date.now();
+    this._gracePeriodActive = true;
+    
     // Store fingerprint
     const storedFingerprint = StorageManager.get(StorageManager.STORAGE_KEYS.FINGERPRINT);
     if (!storedFingerprint) {
@@ -63,8 +68,23 @@ class AntiCheatSystem {
     this.setupPageRefreshPrevention();
     this.setupNetworkDetection();
     
-    // FIX: Removed startContinuousMonitoring() - it was causing false positives
+    // Grace period - disable penalties for first 5 seconds after page load
+    // This prevents false positives from browser rendering, focus events during load
+    this._gracePeriodActive = true;
+    setTimeout(() => {
+      this._gracePeriodActive = false;
+      console.log('[ANTI-CHEAT] Grace period ended, penalties now active');
+    }, this._gracePeriodMs);
+    
     console.log('[ANTI-CHEAT] Initialized with', this.warnings, 'existing warnings');
+    console.log('[ANTI-CHEAT] Grace period active for', this._gracePeriodMs / 1000, 'seconds');
+  }
+
+  /**
+   * Check if grace period is still active
+   */
+  isInGracePeriod() {
+    return this._gracePeriodActive || (Date.now() - this._initTimestamp < this._gracePeriodMs);
   }
 
   /**
@@ -246,6 +266,7 @@ class AntiCheatSystem {
   /**
    * FIX: Improved visibility detection with debouncing
    * Uses time-window based thresholds to prevent false positives
+   * Also excludes legitimate navigation between rounds
    */
   setupVisibilityDetection() {
     // Single handler for both focus and visibility
@@ -255,6 +276,13 @@ class AntiCheatSystem {
       if (isHidden && this._lastVisibilityState !== 'hidden') {
         // Tab became hidden
         this._lastVisibilityState = 'hidden';
+        
+        // FIX: Don't count tab switches for legitimate navigation between rounds
+        if (typeof isLegitimateNavigation === 'function' && isLegitimateNavigation()) {
+          console.log('[ANTI-CHEAT] Tab switch ignored (legitimate navigation)');
+          return;
+        }
+        
         this.tabSwitches++;
         StorageManager.incrementTabSwitches();
         
@@ -368,9 +396,17 @@ class AntiCheatSystem {
    * 
    * ANTI-CHEAT SAFETY: Ignores violations when app modals are showing
    * to prevent false positives from our own non-blocking UI
+   * 
+   * SCORING INTEGRATION: Applies penalties via ScoringSystem
    */
   _recordViolation(reason) {
     if (!this.enabled) return;
+    
+    // FIX: Don't record violations during grace period
+    if (this.isInGracePeriod()) {
+      console.log('[ANTI-CHEAT] Violation ignored (grace period)');
+      return;
+    }
     
     // FIX: Don't record violations while our modal is showing
     // This prevents our own UI from triggering anti-cheat
@@ -391,12 +427,69 @@ class AntiCheatSystem {
     
     console.log(`[ANTI-CHEAT] Violation recorded: ${reason} (${this._violationBuffer.length}/${this._violationsToTrigger} in window)`);
     
+    // Apply scoring penalty if ScoringSystem is available
+    if (typeof ScoringSystem !== 'undefined') {
+      const penaltyResult = ScoringSystem.applyPenalty(reason);
+      if (penaltyResult.forgiven) {
+        console.log(`[ANTI-CHEAT] Penalty forgiven: ${penaltyResult.message}`);
+        // Show subtle warning toast
+        if (typeof showToast === 'function') {
+          showToast(penaltyResult.message, 'warning', 3000);
+        }
+      } else if (penaltyResult.penalty < 0) {
+        console.log(`[ANTI-CHEAT] Penalty applied: ${penaltyResult.penalty} points`);
+        // Show penalty notification
+        this._showPenaltyNotification(penaltyResult.penalty, reason);
+      }
+    }
+    
     // Check if we have enough violations to trigger a warning
     if (this._violationBuffer.length >= this._violationsToTrigger) {
       // Clear the buffer after triggering
       this._violationBuffer = [];
       this.triggerWarning(reason);
     }
+  }
+
+  /**
+   * Show real-time penalty notification
+   */
+  _showPenaltyNotification(penalty, reason) {
+    // Remove existing notification
+    const existing = document.getElementById('penalty-notification');
+    if (existing) existing.remove();
+    
+    const notification = document.createElement('div');
+    notification.id = 'penalty-notification';
+    notification.style.cssText = `
+      position: fixed;
+      top: 70px;
+      right: 20px;
+      background: linear-gradient(135deg, #dc3545, #c82333);
+      color: white;
+      padding: 15px 25px;
+      border-radius: 8px;
+      z-index: 99999;
+      animation: slideIn 0.3s ease-out;
+      box-shadow: 0 4px 15px rgba(220, 53, 69, 0.4);
+      max-width: 300px;
+    `;
+    
+    const reasonText = reason.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    notification.innerHTML = `
+      <div style="font-weight: bold; margin-bottom: 5px;">⚠️ Penalty Applied</div>
+      <div style="font-size: 0.9em;">${reasonText}: <strong>${penalty}</strong> points</div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 4 seconds
+    setTimeout(() => {
+      if (notification.parentElement) {
+        notification.style.animation = 'slideOut 0.3s ease-out forwards';
+        setTimeout(() => notification.remove(), 300);
+      }
+    }, 4000);
   }
 
   /**
@@ -628,6 +721,28 @@ class AntiCheatSystem {
 
 // Global instance
 let antiCheatInstance = null;
+
+// Flag to indicate legitimate navigation (between rounds)
+let _isLegitimateNavigation = false;
+
+/**
+ * Mark the next navigation as legitimate (e.g., navigating between rounds)
+ * This prevents tab switch counting when moving to next round
+ */
+function markLegitimateNavigation() {
+  _isLegitimateNavigation = true;
+  // Auto-reset after 5 seconds in case navigation doesn't happen
+  setTimeout(() => {
+    _isLegitimateNavigation = false;
+  }, 5000);
+}
+
+/**
+ * Check if current navigation is legitimate
+ */
+function isLegitimateNavigation() {
+  return _isLegitimateNavigation;
+}
 
 function initAntiCheat(enabled = true) {
   antiCheatInstance = new AntiCheatSystem(enabled);

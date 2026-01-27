@@ -42,7 +42,17 @@ const StorageManager = {
     
     // Anti-cheat
     LAST_WARNING_TIME: 'codewar_last_warning_time',
-    NETWORK_REQUESTS: 'codewar_network_requests'  // Track suspicious network activity
+    NETWORK_REQUESTS: 'codewar_network_requests',  // Track suspicious network activity
+    
+    // Scoring System
+    MCQ_SCORE_DATA: 'codewar_mcq_score_data',      // Detailed MCQ score with breakdown
+    DEBUG_SCORE_DATA: 'codewar_debug_score_data',  // Detailed Debug score with breakdown
+    PS_SCORE_DATA: 'codewar_ps_score_data',        // Detailed PS score with breakdown
+    ROUND_PENALTIES: 'codewar_round_penalties',    // Current round penalties
+    MINOR_VIOLATIONS: 'codewar_minor_violations',  // Minor violation count (for forgiveness)
+    ELIMINATED: 'codewar_eliminated',              // Elimination status
+    ELIMINATED_ROUND: 'codewar_eliminated_round',  // Round where eliminated
+    ADMIN_OVERRIDE: 'codewar_admin_override'       // Admin override for elimination
   },
 
   // ============================================
@@ -393,6 +403,83 @@ const StorageManager = {
     // Clamp to non-negative
     const clampedSeconds = Math.max(0, Math.floor(seconds));
     return this.set(key, clampedSeconds);
+  },
+
+  // ============================================
+  // Scoring System Methods
+  // ============================================
+  
+  // Detailed score data per round (includes breakdown)
+  getMCQScoreData() {
+    return this.get(this.STORAGE_KEYS.MCQ_SCORE_DATA);
+  },
+
+  setMCQScoreData(data) {
+    return this.set(this.STORAGE_KEYS.MCQ_SCORE_DATA, data);
+  },
+
+  getDebugScoreData() {
+    return this.get(this.STORAGE_KEYS.DEBUG_SCORE_DATA);
+  },
+
+  setDebugScoreData(data) {
+    return this.set(this.STORAGE_KEYS.DEBUG_SCORE_DATA, data);
+  },
+
+  getPSScoreData() {
+    return this.get(this.STORAGE_KEYS.PS_SCORE_DATA);
+  },
+
+  setPSScoreData(data) {
+    return this.set(this.STORAGE_KEYS.PS_SCORE_DATA, data);
+  },
+
+  // Round penalties tracking
+  getRoundPenalties() {
+    return this.get(this.STORAGE_KEYS.ROUND_PENALTIES) || 0;
+  },
+
+  setRoundPenalties(penalties) {
+    return this.set(this.STORAGE_KEYS.ROUND_PENALTIES, penalties);
+  },
+
+  addRoundPenalty(penalty) {
+    const current = this.getRoundPenalties();
+    return this.set(this.STORAGE_KEYS.ROUND_PENALTIES, current + penalty);
+  },
+
+  // Minor violation count (for forgiveness system)
+  getMinorViolationCount() {
+    return this.get(this.STORAGE_KEYS.MINOR_VIOLATIONS) || 0;
+  },
+
+  setMinorViolationCount(count) {
+    return this.set(this.STORAGE_KEYS.MINOR_VIOLATIONS, count);
+  },
+
+  // Elimination status
+  isEliminated() {
+    return this.get(this.STORAGE_KEYS.ELIMINATED) === true;
+  },
+
+  getEliminatedRound() {
+    return this.get(this.STORAGE_KEYS.ELIMINATED_ROUND);
+  },
+
+  setEliminated(eliminated, round = null) {
+    this.set(this.STORAGE_KEYS.ELIMINATED, eliminated);
+    if (round) {
+      this.set(this.STORAGE_KEYS.ELIMINATED_ROUND, round);
+    }
+  },
+
+  // Admin override (allows eliminated users to continue)
+  hasAdminOverride() {
+    return this.get(this.STORAGE_KEYS.ADMIN_OVERRIDE) === true;
+  },
+
+  setAdminOverride(override) {
+    return this.set(this.STORAGE_KEYS.ADMIN_OVERRIDE, override);
   },
 
   // ============================================

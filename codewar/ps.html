@@ -17,11 +17,22 @@
     </div>
 
     <div id="ps-container">
+      <!-- Language Control Toolbar - Highly Visible -->
+      <div id="language-toolbar" style="background: var(--bg-secondary); padding: 12px 20px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 2px solid var(--border-color);">
+        <div style="display: flex; align-items: center; gap: 15px;">
+          <span style="color: var(--text-secondary);">Solution Language:</span>
+          <span id="current-lang-display" style="color: var(--accent-cyan); font-weight: bold; font-size: 1.1em; text-transform: uppercase;">-</span>
+        </div>
+        <button class="btn btn-secondary" onclick="showLanguageChangeModal()" id="change-lang-btn" style="padding: 8px 20px;">
+          🌐 Change Language (<span id="lang-changes-remaining">2</span> left)
+        </button>
+      </div>
+
       <div class="question-list" id="problem-nav"></div>
 
       <div class="question-container">
         <div class="question-header">
-          <h2 id="problem-title"></h2>
+          <h2 id="problem-title" style="margin: 0;"></h2>
           <span id="autosave-status" style="color: var(--accent-green); font-size: 0.8em;"></span>
         </div>
         <div class="question-text" id="problem-description"></div>
@@ -61,10 +72,11 @@
   <!-- Error logging for automated testing -->
   <script src="js/logger.js?v=1"></script>
   <script src="js/utils.js?v=3"></script>
-  <script src="js/storage.js?v=3"></script>
+  <script src="js/storage.js?v=4"></script>
   <script src="js/auth.js?v=3"></script>
   <script src="js/timer.js?v=3"></script>
-  <script src="js/anti_cheat.js?v=3"></script>
+  <script src="js/scoring.js?v=1"></script>
+  <script src="js/anti_cheat.js?v=4"></script>
   <script src="js/data.js?v=3"></script>
   <!-- Note: code_verifier.js is no longer needed - validation is in data.js -->
   <script>
@@ -154,6 +166,10 @@
         // FIX: Load saved solutions using new per-problem storage
         solutions = StorageManager.getPSSolutions();
         
+        // Update language display in toolbar
+        updateCurrentLanguageDisplay();
+        updateLanguageChangesDisplay();
+        
         // Render problem navigation
         renderProblemNavigation();
         
@@ -168,6 +184,67 @@
         showAlert('An error occurred while loading problems. Please refresh the page.', 
           'Error', 'error', () => window.location.href = 'index.html');
       }
+    }
+    
+    function updateLanguageChangesDisplay() {
+      const changes = StorageManager.getLanguageChanges();
+      const remaining = 2 - changes;
+      
+      const remainingEl = document.getElementById('lang-changes-remaining');
+      const changeLangBtn = document.getElementById('change-lang-btn');
+      if (remainingEl) remainingEl.textContent = remaining;
+      if (changeLangBtn) {
+        if (remaining <= 0) {
+          changeLangBtn.disabled = true;
+          changeLangBtn.style.opacity = '0.5';
+        } else {
+          changeLangBtn.disabled = false;
+          changeLangBtn.style.opacity = '1';
+        }
+      }
+    }
+    
+    function updateCurrentLanguageDisplay() {
+      const langDisplay = document.getElementById('current-lang-display');
+      if (langDisplay && currentLanguage) {
+        const displayNames = { c: 'C', cpp: 'C++', java: 'Java', python: 'Python' };
+        langDisplay.textContent = displayNames[currentLanguage] || currentLanguage;
+      }
+    }
+    
+    function showLanguageChangeModal() {
+      const changes = StorageManager.getLanguageChanges();
+      if (changes >= 2) {
+        showAlert('You have reached the maximum number of language changes (2)', 'Limit Reached', 'warning');
+        return;
+      }
+      
+      const remaining = 2 - changes - 1;
+      
+      // NON-BLOCKING: Show confirmation modal for PS round
+      // PS problems are language-agnostic, only solution language changes
+      showConfirm(
+        `Changing language will update your solution language preference.\n\n` +
+        `✅ Your current solutions will be saved.\n` +
+        `✅ Problem statements remain the same.\n` +
+        `⏱️ Your timer will continue (not reset).\n\n` +
+        `After this change, you will have ${remaining} language change(s) remaining.\n\n` +
+        `Do you want to continue?`,
+        () => {
+          // User confirmed - go to MCQ for language selection
+          if (typeof markLegitimateNavigation === 'function') {
+            markLegitimateNavigation();
+          }
+          window.location.href = 'mcq.html';
+        },
+        null,
+        {
+          title: 'Change Solution Language',
+          confirmText: 'Yes, Change Language',
+          cancelText: 'Cancel',
+          type: 'info'
+        }
+      );
     }
 
     function renderProblemNavigation() {
@@ -372,6 +449,16 @@
           }
         }
       });
+      
+      // FIX: Update timer display immediately after starting (especially important on refresh)
+      const timeEl = document.getElementById('timer');
+      if (timeEl && roundTimer) {
+        timeEl.textContent = roundTimer.getFormattedTime();
+        const remaining = roundTimer.getRemaining();
+        if (remaining <= 300) {
+          timeEl.classList.add('timer-warning');
+        }
+      }
     }
 
     async function submitPS(autoSubmit = false) {
@@ -408,6 +495,11 @@
         // Save current solution first
         saveCurrentSolution(false);
         
+        // Get time info before stopping timer
+        const timeRemaining = roundTimer ? roundTimer.getRemaining() : 0;
+        const totalTime = ROUND_DURATIONS.ps * 60;
+        const timeUsed = totalTime - timeRemaining;
+        
         // Stop timer
         if (roundTimer) roundTimer.prepareForSubmission();
         if (antiCheat) antiCheat.stop();
@@ -419,7 +511,8 @@
           submitBtn.textContent = 'Submitting...';
         }
 
-        // Calculate total score
+        // Calculate total score - count correct problems
+        let correctProblems = 0;
         let totalPassed = 0;
         let totalTests = 0;
         
@@ -431,8 +524,13 @@
             try {
               const validation = await validatePSSolution(problem.id, solution, currentLanguage);
               if (validation.results && Array.isArray(validation.results)) {
-                totalPassed += validation.results.filter(r => r && r.passed).length;
+                const passed = validation.results.filter(r => r && r.passed).length;
+                totalPassed += passed;
                 totalTests += validation.results.length;
+                // Count as correct if all test cases pass
+                if (passed === validation.results.length) {
+                  correctProblems++;
+                }
               }
             } catch (e) {
               console.error('Error validating solution for problem', problem.id, e);
@@ -440,20 +538,34 @@
           }
         }
         
+        // Get accumulated penalties for this round
+        const penalties = StorageManager.getRoundPenalties() || 0;
+        
+        // Calculate score using ScoringSystem (based on correct problems, not test cases)
+        const scoreData = ScoringSystem.calculateRoundScore(
+          'ps', correctProblems, timeRemaining, totalTime, penalties
+        );
+        
+        // Save detailed score data
+        ScoringSystem.saveRoundScore('ps', scoreData, timeUsed);
+        
+        // Also save legacy format (percentage based on test cases)
         const score = totalTests > 0 ? 
           Math.max(0, Math.min(100, Math.round((totalPassed / totalTests) * 100))) : 0;
-        
         StorageManager.setPSScore(score);
         
-        // FIX: Now we set 'completed' since this is the LAST round
+        // Final round - always complete
         StorageManager.setCurrentRound('completed');
         
+        // Mark navigation as legitimate to prevent tab switch counting
+        if (typeof markLegitimateNavigation === 'function') {
+          markLegitimateNavigation();
+        }
+        
         if (autoSubmit) {
-          // NON-BLOCKING: showAutoExit with countdown instead of alert()
           showAutoExit('Time expired! Your solutions have been submitted automatically.', 
             'results.html', 3);
         } else {
-          // Manual submission - redirect immediately
           window.location.href = 'results.html';
         }
       } catch (error) {

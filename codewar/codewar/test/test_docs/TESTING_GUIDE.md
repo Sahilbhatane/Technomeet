@@ -1,406 +1,548 @@
-# CodeWar Competition Platform - Manual Testing Guide
+# CodeWar Competition Platform - Complete Testing Guide
 
-## Prerequisites
+## Table of Contents
+1. [Quick Start](#quick-start)
+2. [Starting the Server](#starting-the-server)
+3. [User Testing Guide](#user-testing-guide)
+4. [Admin Reset Guide](#admin-reset-guide)
+5. [Valid Test Credentials](#valid-test-credentials)
+6. [Round-by-Round Testing](#round-by-round-testing)
+7. [Anti-Cheat Testing](#anti-cheat-testing)
+8. [Troubleshooting](#troubleshooting)
 
-1. **Start the local server** (if not already running):
-   ```bash
-   # Using Python 3
-   python -m http.server 8000
-   
-   # OR using Node.js http-server
-   npx http-server -p 8000
+---
+
+## Quick Start
+
+### Prerequisites
+- Python 3.x installed
+- Modern web browser (Chrome, Firefox, Edge)
+- Text editor for viewing code (optional)
+
+### Start Testing in 3 Steps
+1. Open PowerShell/Terminal in the `codewar` folder
+2. Run: `python -m http.server 8080`
+3. Open browser: `http://localhost:8080`
+
+---
+
+## Starting the Server
+
+### Option 1: PowerShell (Recommended)
+```powershell
+cd "c:\Users\sahil\OneDrive\Desktop\CODE\Technomeet2k26\codewar"
+python -m http.server 8080
+```
+
+### Option 2: Use the Batch File
+Double-click `start_server.bat` in the codewar folder.
+
+### Option 3: Use the PowerShell Script
+```powershell
+.\start_server.ps1
+```
+
+### Verify Server is Running
+- Open browser to: `http://localhost:8080` or `http://127.0.0.1:8080`
+- You should see the CodeWar Competition homepage
+
+---
+
+## Valid Test Credentials
+
+### Registration Codes (for participants)
+Use any of these codes to enter the competition:
+
+| Code | Description |
+|------|-------------|
+| `CODE-TEST` | Primary test code |
+| `CODE-DEMO` | Demo/demonstration code |
+| `CODE-0001` | Additional test code |
+
+### Admin Password (for reset panel)
+| Password | Description |
+|----------|-------------|
+| `admin2k26` | Admin reset password |
+
+> **Security Note:** These credentials are validated using SHA-256 hashes. The actual codes/passwords are NOT stored in the client-side code - only their hashes are stored, which cannot be reversed.
+
+---
+
+## User Testing Guide
+
+### Phase 1: Registration & Authentication
+
+1. **Open the platform**
+   - Navigate to `http://localhost:8080`
+   - You should see "Enter Registration Code" form
+
+2. **Test invalid inputs**
+   - Try submitting empty → Should show "Please enter a registration code"
+   - Try "INVALID" → Should show "Invalid code format. Use CODE-XXXX format"
+   - Try "CODE-WRONG" → Should show "Server error" (no matching hash)
+
+3. **Test valid login**
+   - Enter `CODE-TEST` and click "Enter Competition"
+   - Should see Competition Rounds page with 3 rounds
+
+### Phase 2: MCQ Round Testing
+
+1. **Start MCQ Round**
+   - Click "Start MCQ Round"
+   - Select a language (Python, Java, C, or C++)
+   - Timer starts at 30:00
+
+2. **Test question navigation**
+   - Answer questions by clicking options
+   - Use Next/Previous buttons
+   - Click question numbers in the sidebar
+   - Notice "✓ Auto Save Enabled" indicator when you answer
+
+3. **Test persistence**
+   - Answer a few questions
+   - Press F5 to refresh
+   - Timer should CONTINUE (not reset)
+   - Answers should be PRESERVED
+   - Question order should be SAME
+
+4. **Test submission**
+   - Click "Submit Quiz"
+   - Confirmation modal appears showing:
+     - Number of answered questions
+     - Number of unanswered questions
+   - Click "Continue Working" to go back
+   - Click "Submit" to submit
+
+5. **After submission**
+   - Redirected to Competition Rounds page
+   - MCQ shows score (e.g., "Score: 15/20 (75%)")
+   - Debug round is now enabled
+
+### Phase 3: Debug Round Testing
+
+1. **Start Debug Round**
+   - Click "Continue Debug Round"
+   - Timer starts at 45:00
+   - 5 debugging problems shown
+
+2. **Solve a problem**
+   - Read the faulty code
+   - Write corrected code in the textarea
+   - Click "Verify Solution" to check
+   - Should show "✓ Correct!" if valid
+
+3. **Test submission**
+   - Click "Submit Round"
+   - Confirmation modal appears
+   - Submit to proceed
+
+4. **After submission**
+   - Debug shows score
+   - PS round is now enabled
+
+### Phase 4: Problem Statement (PS) Round Testing
+
+1. **Start PS Round**
+   - Click "Continue PS Round"
+   - Timer starts at 60:00
+   - 5 coding problems shown
+
+2. **Solve a problem**
+   - Read the problem statement
+   - Write your solution code
+   - Click "Run Test Cases" to verify
+   - Shows test case results with pass/fail
+
+3. **Example solution for Problem 1 (Sum of Two Numbers)**
+   ```python
+   def sum_numbers(a, b):
+       return a + b
    ```
 
-2. **Open your browser** and navigate to:
-   ```
-   http://localhost:8000/codewar/
-   ```
+4. **Test submission**
+   - Click "Submit Round"
+   - Confirmation modal appears
+   - Submit to complete competition
+
+### Phase 5: Results Page
+
+After completing all rounds:
+- See total score percentage
+- Individual round scores
+- Time spent per round
+- Anti-cheat statistics (warnings, tab switches)
+- Download results option
 
 ---
 
-## Testing Checklist
+## Admin Reset Guide
 
-### 1. Landing Page & Authentication
+### How to Access Reset Panel
 
-#### Test Countdown Timer
-- [ ] Navigate to `http://localhost:8000/codewar/`
-- [ ] Verify countdown timer displays (if exam hasn't started)
-- [ ] Check timer format: `Xd Xh Xm Xs`
+**Method 1: Through Application (Recommended)**
+1. Complete a competition (or be on results page)
+2. The reset page can be accessed if you navigate from within the app
 
-#### Test Authentication
-- [ ] Enter invalid code: `INVALID-CODE`
-  - Should show error message
-- [ ] Enter valid code: `CODE-0001` (or any from CODE-0001 to CODE-0010)
-  - Should authenticate successfully
-  - Should redirect to rounds selection page
+**Method 2: Set Session Flag**
+1. Open browser DevTools (F12)
+2. Go to Console tab
+3. Run: `sessionStorage.setItem('codewar_admin_access', 'true')`
+4. Navigate to `http://localhost:8080/reset.html`
 
-#### Test Rounds Navigation
-- [ ] Verify all 3 rounds are displayed:
-  - Round 1: MCQ Quiz (30 questions, 30 minutes)
-  - Round 2: Debug Code (45 minutes)
-  - Round 3: Problem Statement (60 minutes)
-- [ ] Verify only MCQ round button is enabled initially
-- [ ] Verify Debug and PS rounds are disabled (sequential access)
+### Performing a Reset
 
----
+1. **Access the reset page** (using methods above)
+2. **Enter admin password:** `admin2k26`
+3. **Click "Reset All Data"**
+4. **Confirm the reset** in the confirmation modal
+5. **Wait for redirect** to homepage
 
-### 2. MCQ Round Testing
+### What Gets Reset
+- All localStorage data (progress, answers, scores)
+- All sessionStorage data (authentication, session)
+- All cookies
+- All round states return to initial
 
-#### Start MCQ Round
-- [ ] Click "Start MCQ Round" button
-- [ ] Verify page loads: `http://localhost:8000/codewar/mcq.html`
-- [ ] Check timer shows: `30:00` and counts down
-- [ ] Verify language selection screen appears
-
-#### Test Language Selection
-- [ ] Try clicking different languages: C, C++, Java, Python
-- [ ] Select Python (or any language)
-- [ ] Verify language changes remaining counter: "Language changes remaining: 2"
-- [ ] Verify questions load after selection
-- [ ] Try changing language again (should decrease counter)
-
-#### Test Question Navigation
-- [ ] Verify question counter: "Question 1 of X" (X depends on language)
-- [ ] Click on question number buttons (1, 2, 3, etc.)
-- [ ] Verify questions change correctly
-- [ ] Click "Next" button - should go to next question
-- [ ] Click "Previous" button - should go to previous question
-- [ ] Verify "Previous" is disabled on first question
-- [ ] Verify "Next" is disabled on last question
-
-#### Test Answer Selection
-- [ ] Select an answer option (A, B, C, or D)
-- [ ] Verify option is highlighted/selected
-- [ ] Navigate to another question
-- [ ] Navigate back to the answered question
-- [ ] Verify your answer is still selected (auto-save works)
-
-#### Test Timer
-- [ ] Watch timer countdown from 30:00
-- [ ] Verify it decreases every second
-- [ ] Wait for timer to reach 0:00 (or manually test auto-submit)
-- [ ] Verify auto-submission when time expires
-
-#### Test Submission
-- [ ] Answer a few questions
-- [ ] Click "Submit Quiz" button
-- [ ] Verify confirmation dialog appears
-- [ ] Confirm submission
-- [ ] Verify redirect to index.html
-- [ ] Verify Debug round button is now enabled
+### Manual Reset Alternative
+If reset page doesn't work:
+1. Open DevTools (F12)
+2. Go to Application tab
+3. Click "Clear site data" or manually clear:
+   - localStorage
+   - sessionStorage
+   - Cookies
 
 ---
 
-### 3. Debug Round Testing
+## Round-by-Round Testing
 
-#### Start Debug Round
-- [ ] From index.html, click "Start Debug Round"
-- [ ] Verify page loads: `http://localhost:8000/codewar/debug.html`
-- [ ] Check timer shows: `45:00` and counts down
-- [ ] Verify question counter: "Question 1 of 5"
+### MCQ Round Details
+| Setting | Value |
+|---------|-------|
+| Duration | 30 minutes |
+| Questions | 20 |
+| Languages | Python, Java, C, C++ |
+| Language changes | 2 maximum |
 
-#### Test Code Display
-- [ ] Verify faulty code is displayed in code block
-- [ ] Verify code is syntax-highlighted (if applicable)
-- [ ] Verify code is read-only (cannot edit faulty code)
+### Debug Round Details
+| Setting | Value |
+|---------|-------|
+| Duration | 45 minutes |
+| Problems | 5 |
+| Verification | Pattern-based |
 
-#### Test Solution Editor
-- [ ] Type corrected code in solution textarea
-- [ ] Verify code editor accepts input
-- [ ] Test code formatting (indentation, etc.)
-
-#### Test Solution Verification
-- [ ] Enter incorrect solution
-- [ ] Click "Verify Solution" button
-- [ ] Verify feedback shows: "✗ Incorrect"
-- [ ] Verify hint is displayed (if available)
-- [ ] Enter correct solution (match the expected format)
-- [ ] Click "Verify Solution" again
-- [ ] Verify feedback shows: "✓ Correct" (if solution matches)
-
-#### Test Navigation
-- [ ] Click question number buttons (1-5)
-- [ ] Verify questions change
-- [ ] Click "Next" and "Previous" buttons
-- [ ] Verify navigation works correctly
-
-#### Test Save Progress
-- [ ] Enter solution code
-- [ ] Click "Save Progress" button
-- [ ] Navigate to another question
-- [ ] Navigate back
-- [ ] Verify your code is still there (auto-save)
-
-#### Test Submission
-- [ ] Complete all 5 questions (or skip some)
-- [ ] Click "Submit Round" button
-- [ ] Verify confirmation dialog
-- [ ] Confirm submission
-- [ ] Verify redirect to index.html
-- [ ] Verify PS round button is now enabled
+### PS Round Details
+| Setting | Value |
+|---------|-------|
+| Duration | 60 minutes |
+| Problems | 5 |
+| Testing | Test case based |
 
 ---
 
-### 4. Problem Statement Round Testing
+## Anti-Cheat Testing
 
-#### Start PS Round
-- [ ] From index.html, click "Start PS Round"
-- [ ] Verify page loads: `http://localhost:8000/codewar/ps.html`
-- [ ] Check timer shows: `60:00` and counts down
-- [ ] Verify problem counter: "Problem 1 of 5"
+### What Triggers Warnings
+- Switching tabs multiple times rapidly
+- Opening DevTools repeatedly
+- Having multiple tabs open
 
-#### Test Problem Display
-- [ ] Verify problem title is displayed
-- [ ] Verify problem description is displayed
-- [ ] Verify constraints are shown
-- [ ] Verify example input/output (if available)
+### Warning System
+- 3 warnings before auto-exit
+- 5 second cooldown between warnings
+- Requires 3 violations in 10 second window
 
-#### Test Code Editor
-- [ ] Type solution code in textarea
-- [ ] Verify code editor accepts input
-- [ ] Test multi-line code entry
-
-#### Test Test Case Execution
-- [ ] Enter a solution (e.g., for "Sum of Two Numbers"):
-  ```python
-  def solve(a, b):
-      return a + b
-  
-  a, b = map(int, input().split())
-  print(solve(a, b))
-  ```
-- [ ] Click "Run Test Cases" button
-- [ ] Verify test results panel appears
-- [ ] Verify each test case shows:
-  - Test Case number
-  - Status (PASSED/FAILED)
-  - Input values
-  - Expected output
-  - Your output
-- [ ] Verify summary shows:
-  - Total test cases
-  - Passed count
-  - Failed count
-  - Score percentage
-
-#### Test Multiple Problems
-- [ ] Click "Next" button to go to problem 2
-- [ ] Verify new problem loads
-- [ ] Verify previous problem's solution is saved
-- [ ] Click "Previous" to go back
-- [ ] Verify previous solution is still there
-
-#### Test Submission
-- [ ] Complete all problems (or skip some)
-- [ ] Click "Submit Round" button
-- [ ] Verify confirmation dialog
-- [ ] Confirm submission
-- [ ] Verify redirect to results.html
-
----
-
-### 5. Results Page Testing
-
-#### View Results
-- [ ] Verify page loads: `http://localhost:8000/codewar/results.html`
-- [ ] Verify all round scores are displayed:
-  - MCQ Score (X/30, percentage)
-  - Debug Score (X/5, percentage)
-  - PS Score (X/5, percentage)
-- [ ] Verify total score is calculated
-- [ ] Verify time taken for each round
-- [ ] Verify completion status
-
-#### Test Statistics
-- [ ] Check warning count (if any)
-- [ ] Check tab switch count (if any)
-- [ ] Verify all statistics are accurate
-
-#### Test Download (if implemented)
-- [ ] Click "Download Results" button (if available)
-- [ ] Verify results are downloaded as JSON/text
-
----
-
-### 6. Anti-Cheat System Testing
-
-#### Test Focus Lock
-- [ ] Start any round (MCQ, Debug, or PS)
-- [ ] Click outside the browser window (lose focus)
-- [ ] Verify warning appears
-- [ ] Verify warning count increases
-- [ ] Repeat until max warnings (should auto-exit)
-
-#### Test Tab Switch Detection
-- [ ] Start any round
-- [ ] Switch to another tab
-- [ ] Verify warning appears
-- [ ] Verify tab switch count increases
-
-#### Test DevTools Detection
-- [ ] Start any round
-- [ ] Press F12 (open DevTools)
-- [ ] Verify warning appears
-- [ ] Try Ctrl+Shift+I (DevTools shortcut)
-- [ ] Verify warning appears
-
-#### Test Right-Click Block
-- [ ] Start any round
-- [ ] Right-click on page
-- [ ] Verify context menu is blocked (or limited)
-
-#### Test Copy/Paste Block
-- [ ] Start MCQ or Debug round
-- [ ] Try to copy text from page
-- [ ] Verify copy is blocked
-- [ ] Try to paste
-- [ ] Verify paste is blocked
-- [ ] **Note**: Copy/paste should work in PS round code editor
-
-#### Test Keyboard Shortcuts
-- [ ] Try Ctrl+U (view source)
-- [ ] Try Ctrl+S (save page)
-- [ ] Try Ctrl+Shift+I (DevTools)
-- [ ] Try F12
-- [ ] Verify all are blocked
-
-#### Test Full-Screen Mode
-- [ ] Start any round
-- [ ] Try to exit full-screen (if enforced)
-- [ ] Verify warning appears
-
----
-
-### 7. Data Persistence Testing
-
-#### Test Auto-Save
-- [ ] Start MCQ round
-- [ ] Answer a few questions
-- [ ] Refresh the page (F5)
-- [ ] Verify answers are still selected
-- [ ] Verify timer continues from where it left off
-
-#### Test Round Progress
-- [ ] Complete MCQ round
-- [ ] Close browser
-- [ ] Reopen and authenticate
-- [ ] Verify Debug round is enabled
-- [ ] Verify MCQ round shows as completed
-
----
-
-### 8. Edge Cases & Error Handling
-
-#### Test Invalid Inputs
-- [ ] Try submitting empty MCQ answers
-- [ ] Try submitting empty Debug solution
-- [ ] Try submitting empty PS solution
-- [ ] Verify appropriate error messages
-
-#### Test Time Expiry
-- [ ] Start a round
-- [ ] Wait for timer to reach 0 (or manually adjust timer in code)
-- [ ] Verify auto-submission occurs
-- [ ] Verify redirect happens
-
-#### Test Browser Refresh
-- [ ] Start a round
-- [ ] Answer some questions
-- [ ] Refresh page (F5)
-- [ ] Verify progress is saved
-- [ ] Verify timer continues correctly
-
-#### Test Multiple Tabs
-- [ ] Open platform in one tab
-- [ ] Open same URL in another tab
-- [ ] Verify warning appears (multiple tab detection)
-
----
-
-## Quick Test Scenarios
-
-### Scenario 1: Complete Flow (Quick Test)
-1. Authenticate with `CODE-0001`
-2. Start MCQ round → Select Python → Answer 2-3 questions → Submit
-3. Start Debug round → Fix 1 question → Submit
-4. Start PS round → Solve 1 problem → Run test cases → Submit
-5. View results page
-
-### Scenario 2: Anti-Cheat Test
+### Testing Anti-Cheat
 1. Start MCQ round
-2. Switch tabs → Verify warning
-3. Open DevTools (F12) → Verify warning
-4. Lose focus → Verify warning
-5. Continue until max warnings → Verify auto-exit
+2. Switch tabs (Alt+Tab) several times quickly
+3. After multiple violations, warning modal appears
+4. Continue switching to see warning count increase
+5. At 3 warnings, exam terminates
 
-### Scenario 3: Data Persistence Test
-1. Start MCQ round
-2. Answer 5 questions
-3. Refresh page (F5)
-4. Verify answers are saved
-5. Verify timer continues
-
----
-
-## Valid Test Codes
-
-Use any of these codes for authentication:
-- `CODE-0001` through `CODE-0010`
-- `CODE-TEST` (if available)
-
----
-
-## Notes
-
-- **Timer**: For testing, the exam start time is set to `2020-01-01` (past date) so authentication is always available. Change this in `js/timer.js` for actual event.
-
-- **Language Selection**: Each language has different number of questions:
-  - Basic: 20 questions
-  - C: 20 questions
-  - C++: 20 questions
-  - Java: 20 questions
-  - Python: 20 questions
-
-- **Test Case Execution**: The code verifier uses pattern matching for offline execution. Some complex solutions may not execute perfectly, but the framework is functional.
+### What Doesn't Trigger Warnings
+- App modals (confirmation dialogs)
+- Single tab switch
+- Normal browsing within the app
+- Resizing window
 
 ---
 
 ## Troubleshooting
 
-### Server Not Starting
-- Check if port 8000 is already in use
-- Try a different port: `python -m http.server 8001`
+### "Server error. Please try again."
+- The registration code doesn't match any valid hash
+- Use: `CODE-TEST`, `CODE-DEMO`, or `CODE-0001`
 
-### Pages Not Loading
-- Clear browser cache (Ctrl+Shift+Delete)
-- Hard refresh (Ctrl+F5)
-- Check browser console for errors (F12)
+### Timer Resets on Refresh
+- This should NOT happen after fixes
+- If it does, check browser console for errors
+- Verify localStorage has `codewar_timer_start_mcq` key
 
-### Timer Not Working
-- Check browser console for JavaScript errors
-- Verify `js/timer.js` is loaded correctly
-- Check if exam start time is set correctly
+### Can't Access Certain Rounds
+- Rounds unlock sequentially: MCQ → Debug → PS
+- Complete previous round to unlock next
+- Check `codewar_current_round` in localStorage
 
-### Data Not Loading
-- Verify `js/data.js` file exists and is loaded
+### Reset Page Shows "Access Denied"
+- Direct navigation is blocked for security
+- Use Method 2 from Admin Reset Guide above
+- Or navigate from within the application
+
+### Answers Not Saving
+- Check localStorage in DevTools
+- Look for `codewar_mcq_answers` key
+- Ensure no JavaScript errors in console
+
+### Submission Confirmation Not Appearing
+- The modal should appear on "Submit" click
+- Check if `showSubmitConfirm` function exists
 - Check browser console for errors
-- Verify file paths are correct
 
 ---
 
-## Success Criteria
+## Testing Checklist
 
-✅ All pages load without errors
-✅ Authentication works correctly
-✅ All three rounds are accessible sequentially
-✅ Questions/problems load correctly
-✅ Answers/solutions can be entered and saved
-✅ Timers count down correctly
-✅ Auto-submission works when time expires
-✅ Results page displays correctly
-✅ Anti-cheat warnings appear when triggered
-✅ Data persists across page refreshes
+### Before Competition
+- [ ] Server is running on port 8080
+- [ ] Browser is open to localhost:8080
+- [ ] localStorage is cleared (fresh start)
+
+### During MCQ
+- [ ] Valid code accepted
+- [ ] Timer starts and runs
+- [ ] Answers save with "✓ Auto Save Enabled"
+- [ ] Refresh preserves timer and answers
+- [ ] Submit shows confirmation modal
+
+### During Debug
+- [ ] Problems display correctly
+- [ ] Verify Solution works
+- [ ] Correct solutions accepted
+- [ ] Submit shows confirmation
+
+### During PS
+- [ ] Problems display correctly
+- [ ] Run Test Cases works
+- [ ] Test results show pass/fail
+- [ ] Submit shows confirmation
+
+### After Completion
+- [ ] Results page shows all scores
+- [ ] Cannot go back to rounds
+- [ ] Reset panel works with admin password
 
 ---
 
-Happy Testing! 🚀
+## Quick Reference
+
+### URLs
+| Page | URL |
+|------|-----|
+| Home | `http://localhost:8080` |
+| MCQ | `http://localhost:8080/mcq.html` |
+| Debug | `http://localhost:8080/debug.html` |
+| PS | `http://localhost:8080/ps.html` |
+| Results | `http://localhost:8080/results.html` |
+| Reset | `http://localhost:8080/reset.html` |
+
+### Test Codes
+| Purpose | Value |
+|---------|-------|
+| Registration | `CODE-TEST` |
+| Registration | `CODE-DEMO` |
+| Registration | `CODE-0001` |
+| Admin Password | `admin2k26` |
+
+### localStorage Keys
+| Key | Purpose |
+|-----|---------|
+| `codewar_current_round` | Current round state |
+| `codewar_mcq_answers` | Saved MCQ answers |
+| `codewar_mcq_score` | MCQ score |
+| `codewar_debug_score` | Debug score |
+| `codewar_ps_score` | PS score |
+| `codewar_timer_start_mcq` | MCQ timer start timestamp |
+| `codewar_mcq_question_order` | Shuffled question order |
+
+---
+
+## Security Notes
+
+1. **Registration codes** are validated using SHA-256 hashes - codes cannot be extracted from client code
+2. **Admin password** is also hash-validated - password cannot be read from DevTools
+3. **Direct URL access** to rounds is blocked - must follow proper flow
+4. **Reset page** requires referrer check or session flag
+5. **Anti-cheat** monitors for suspicious behavior but won't trigger during app modals
+
+---
+
+## Error Logging System
+
+The platform includes a comprehensive error logging system for automated testing and debugging.
+
+### Using the Logger
+
+The logger is automatically initialized on every page. Access it via browser console:
+
+```javascript
+// View all logs
+Logger.getLogs()
+
+// View only errors
+Logger.getErrors()
+
+// Print summary
+Logger.printSummary()
+
+// Export logs to file
+Logger.downloadLogs()
+
+// Clear all logs
+Logger.clearLogs()
+```
+
+### What Gets Logged
+
+| Event Type | Description |
+|------------|-------------|
+| **Uncaught Exceptions** | JavaScript errors that crash |
+| **Promise Rejections** | Unhandled async errors |
+| **Console Errors** | Any console.error() calls |
+| **Console Warnings** | Any console.warn() calls |
+| **Network Errors** | Failed fetch/XHR requests |
+| **HTTP Errors** | Non-200 responses |
+| **Slow Page Loads** | Pages taking >3 seconds |
+| **Resource Load Failures** | Missing scripts/images |
+
+### Log Levels
+
+| Level | Value | Use Case |
+|-------|-------|----------|
+| DEBUG | 0 | Detailed debug info |
+| INFO | 1 | General information |
+| WARN | 2 | Warnings |
+| ERROR | 3 | Errors |
+| FATAL | 4 | Critical failures |
+
+### Manual Logging
+
+```javascript
+// Log custom messages
+Logger.info('Something happened', { detail: 'value' })
+Logger.warn('Warning message')
+Logger.error('Error message', { code: 500 })
+
+// Log user actions
+Logger.logAction('clicked button', { buttonId: 'submit' })
+```
+
+---
+
+## Automated Testing
+
+### Running Tests
+
+Open any page and run in console:
+
+```javascript
+// Include test utilities (once)
+const script = document.createElement('script');
+script.src = 'js/test-utils.js';
+document.head.appendChild(script);
+
+// Run all tests
+runTests()
+// or
+TestUtils.runAllTests()
+```
+
+### Test Categories
+
+| Category | Tests |
+|----------|-------|
+| **Logger** | Logging functions work |
+| **localStorage** | Can read/write |
+| **sessionStorage** | Can read/write |
+| **StorageManager** | All methods exist |
+| **Utils** | Helper functions work |
+| **Auth** | Authentication system |
+| **Timer** | Timer functions exist |
+| **Anti-Cheat** | System initialized |
+| **Page Elements** | Required DOM exists |
+
+### Individual Tests
+
+```javascript
+TestUtils.testLogger()
+TestUtils.testLocalStorage()
+TestUtils.testAuth()
+TestUtils.testTimer()
+```
+
+### Simulating User Actions
+
+```javascript
+// Simulate click
+TestUtils.simulateClick('#submit-btn')
+
+// Simulate input
+TestUtils.simulateInput('#code', 'CODE-TEST')
+```
+
+---
+
+## Debugging Workflow
+
+### 1. Reproduce the Issue
+- Clear storage: `localStorage.clear(); sessionStorage.clear();`
+- Refresh the page
+- Perform the actions that cause the issue
+
+### 2. Check Logs
+```javascript
+// Get all errors
+Logger.getErrors()
+
+// Get recent logs
+Logger.getLogs().slice(-20)
+
+// Print summary
+Logger.printSummary()
+```
+
+### 3. Export for Analysis
+```javascript
+// Download as JSON file
+Logger.downloadLogs()
+
+// Or copy to clipboard
+copy(Logger.exportLogs())
+```
+
+### 4. Check localStorage State
+```javascript
+// View all storage
+console.table({
+  currentRound: localStorage.getItem('codewar_current_round'),
+  mcqScore: localStorage.getItem('codewar_mcq_score'),
+  authenticated: sessionStorage.getItem('codewar_authenticated')
+})
+```
+
+---
+
+## Console Quick Commands
+
+| Command | Description |
+|---------|-------------|
+| `Logger.printSummary()` | Show log statistics |
+| `Logger.getErrors()` | Get all error logs |
+| `Logger.downloadLogs()` | Download logs as JSON |
+| `Logger.clearLogs()` | Clear all logs |
+| `runTests()` | Run automated tests |
+| `TestUtils.getResults()` | Get test results |
+
+---
+
+*Last Updated: January 2026*
+*Platform Version: CodeWar TechnoMeet 2K26*

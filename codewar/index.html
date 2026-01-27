@@ -24,11 +24,11 @@
       <form id="auth-form" onsubmit="handleAuth(event)">
         <div class="form-group">
           <label for="code">Registration Code</label>
-          <input type="text" id="code" name="code" placeholder="CODE-XXXX" required autocomplete="off">
+          <input type="text" id="code" name="code" placeholder="CODE-XXXX" autocomplete="off">
         </div>
         <button type="submit" class="btn" style="width: 100%;" id="auth-submit-btn">Enter Competition</button>
       </form>
-      <p id="auth-error" style="color: var(--accent-red); margin-top: 15px; display: none;"></p>
+      <p id="auth-error" style="color: var(--accent-red); font-weight: bold; margin-top: 15px; display: none; padding: 10px; background: rgba(255, 0, 0, 0.1); border-left: 3px solid var(--accent-red); border-radius: 4px;"></p>
     </div>
 
     <div id="rounds-section" style="display: none;">
@@ -75,9 +75,10 @@
   <!-- Error logging for automated testing -->
   <script src="js/logger.js?v=1"></script>
   <script src="js/utils.js?v=3"></script>
-  <script src="js/storage.js?v=3"></script>
+  <script src="js/storage.js?v=4"></script>
   <script src="js/auth.js?v=3"></script>
   <script src="js/timer.js?v=3"></script>
+  <script src="js/scoring.js?v=1"></script>
   <script>
     let countdownTimer = null;
 
@@ -96,8 +97,11 @@
         return;
       }
       
+      // Check for admin override parameter
+      // Usage: index.html?admin=override&key=admin2k26
+      checkAdminOverride();
+      
       // FIX: Clear auth error when user starts typing
-      // NON-BLOCKING: Inline error handling instead of alerts
       const codeInput = document.getElementById('code');
       if (codeInput) {
         codeInput.addEventListener('input', () => {
@@ -123,6 +127,41 @@
           showAuthSection();
         } else {
           startCountdown();
+        }
+      }
+    }
+    
+    // Admin override function - allows eliminated users to continue
+    function checkAdminOverride() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const adminAction = urlParams.get('admin');
+      const adminKey = urlParams.get('key');
+      
+      // Admin override requires correct key
+      if (adminAction === 'override' && adminKey === 'admin2k26') {
+        StorageManager.setAdminOverride(true);
+        StorageManager.setEliminated(false, null);
+        
+        // Show success message
+        if (typeof showToast === 'function') {
+          showToast('Admin override activated. Elimination cleared.', 'success', 5000);
+        }
+        
+        // Clear URL parameters
+        window.history.replaceState({}, document.title, window.location.pathname);
+        
+        console.log('[ADMIN] Override activated - elimination cleared');
+      }
+      
+      // Admin can also reset round state
+      if (adminAction === 'reset-round' && adminKey === 'admin2k26') {
+        const round = urlParams.get('round');
+        if (round) {
+          StorageManager.setCurrentRound(round);
+          if (typeof showToast === 'function') {
+            showToast(`Round reset to: ${round}`, 'success', 3000);
+          }
+          window.history.replaceState({}, document.title, window.location.pathname);
         }
       }
     }
@@ -161,12 +200,36 @@
 
     /**
      * FIX: Improved round state validation and UI update
+     * Handles elimination state
      */
     function updateRoundStatus() {
       const currentRound = StorageManager.getCurrentRound();
       const mcqScore = StorageManager.getMCQScore();
       const debugScore = StorageManager.getDebugScore();
       const psScore = StorageManager.getPSScore();
+      
+      // Check elimination status
+      const isEliminated = StorageManager.isEliminated();
+      const eliminatedRound = StorageManager.getEliminatedRound();
+      
+      if (isEliminated && !StorageManager.hasAdminOverride()) {
+        // User is eliminated - redirect to results
+        const statusEl = document.getElementById('round-status');
+        statusEl.innerHTML = `
+          <span style="color: var(--accent-red);">
+            ⚠️ You were eliminated after the ${eliminatedRound ? eliminatedRound.toUpperCase() : ''} round.
+            <br><a href="results.html" style="color: var(--accent-cyan);">View your results</a>
+          </span>
+        `;
+        
+        // Disable all buttons
+        document.getElementById('mcq-btn').disabled = true;
+        document.getElementById('debug-btn').disabled = true;
+        document.getElementById('ps-btn').disabled = true;
+        
+        document.getElementById('results-section').style.display = 'block';
+        return;
+      }
       
       // Update status message
       const statusEl = document.getElementById('round-status');
@@ -245,15 +308,35 @@
 
     function handleAuth(event) {
       event.preventDefault();
-      const code = document.getElementById('code').value.trim();
+      const codeInput = document.getElementById('code');
+      const code = codeInput.value.trim();
       const errorEl = document.getElementById('auth-error');
       const submitBtn = document.getElementById('auth-submit-btn');
       
-      // FIX: Show inline error for empty submission
+      // FIX: Show inline error for empty submission - make it more visible
       // NON-BLOCKING: Uses inline DOM error instead of alert()
       if (!code || code.length === 0) {
         errorEl.textContent = 'Please enter a registration code.';
         errorEl.style.display = 'block';
+        errorEl.style.color = 'var(--accent-red)';
+        errorEl.style.fontWeight = 'bold';
+        errorEl.style.padding = '10px';
+        errorEl.style.background = 'rgba(255, 0, 0, 0.1)';
+        errorEl.style.borderLeft = '3px solid var(--accent-red)';
+        errorEl.style.borderRadius = '4px';
+        // Scroll error into view
+        errorEl.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        // Focus the input field and highlight it
+        codeInput.focus();
+        codeInput.style.borderColor = 'var(--accent-red)';
+        codeInput.style.borderWidth = '2px';
+        // Remove error styling when user starts typing
+        codeInput.addEventListener('input', function clearError() {
+          errorEl.style.display = 'none';
+          codeInput.style.borderColor = '';
+          codeInput.style.borderWidth = '';
+          codeInput.removeEventListener('input', clearError);
+        }, { once: true });
         return;  // Don't proceed with empty code
       }
       

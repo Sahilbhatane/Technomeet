@@ -41,6 +41,17 @@
     </div>
 
     <div id="quiz-container" style="display: none;">
+      <!-- Language Control Toolbar - Highly Visible -->
+      <div id="language-toolbar" style="background: var(--bg-secondary); padding: 12px 20px; border-radius: 8px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; border: 2px solid var(--border-color);">
+        <div style="display: flex; align-items: center; gap: 15px;">
+          <span style="color: var(--text-secondary);">Current Language:</span>
+          <span id="current-lang-display" style="color: var(--accent-cyan); font-weight: bold; font-size: 1.1em; text-transform: uppercase;">Python</span>
+        </div>
+        <button class="btn btn-secondary" onclick="showLanguageChangeModal()" id="change-lang-btn" style="padding: 8px 20px;">
+          🌐 Change Language (<span id="lang-changes-remaining">2</span> left)
+        </button>
+      </div>
+
       <div class="question-list" id="question-nav"></div>
       
       <div class="question-container">
@@ -64,10 +75,11 @@
   <!-- Error logging for automated testing -->
   <script src="js/logger.js?v=1"></script>
   <script src="js/utils.js?v=3"></script>
-  <script src="js/storage.js?v=3"></script>
+  <script src="js/storage.js?v=4"></script>
   <script src="js/auth.js?v=3"></script>
   <script src="js/timer.js?v=3"></script>
-  <script src="js/anti_cheat.js?v=3"></script>
+  <script src="js/scoring.js?v=1"></script>
+  <script src="js/anti_cheat.js?v=4"></script>
   <script src="js/data.js?v=3"></script>
   <script>
     let questions = [];
@@ -165,6 +177,79 @@
         msgEl.textContent = 'No language changes remaining';
         msgEl.style.color = 'var(--accent-red)';
       }
+      
+      // Update the button in quiz container
+      const remainingEl = document.getElementById('lang-changes-remaining');
+      const changeLangBtn = document.getElementById('change-lang-btn');
+      if (remainingEl) remainingEl.textContent = remaining;
+      if (changeLangBtn) {
+        if (remaining <= 0) {
+          changeLangBtn.disabled = true;
+          changeLangBtn.style.opacity = '0.5';
+        } else {
+          changeLangBtn.disabled = false;
+          changeLangBtn.style.opacity = '1';
+        }
+      }
+    }
+    
+    function showLanguageChangeModal() {
+      const changes = StorageManager.getLanguageChanges();
+      if (changes >= 2) {
+        showAlert('You have reached the maximum number of language changes (2)', 'Limit Reached', 'warning');
+        return;
+      }
+      
+      const remaining = 2 - changes - 1;  // After this change
+      
+      // NON-BLOCKING: Show confirmation modal
+      showConfirm(
+        `Changing language will load different questions for the new language.\n\n` +
+        `⚠️ Your current answers for this language will be saved.\n` +
+        `⏱️ Your timer will continue (not reset).\n\n` +
+        `After this change, you will have ${remaining} language change(s) remaining.\n\n` +
+        `Do you want to continue?`,
+        () => {
+          // User confirmed - show language selection
+          executeLanguageChange();
+        },
+        null,
+        {
+          title: 'Change Language',
+          confirmText: 'Yes, Change Language',
+          cancelText: 'Cancel',
+          type: 'warning'
+        }
+      );
+    }
+    
+    function executeLanguageChange() {
+      // DON'T stop the timer - it should continue
+      // DON'T clear answers - they're saved per language
+      
+      // Show language selection panel
+      document.getElementById('quiz-container').style.display = 'none';
+      document.getElementById('language-selection').style.display = 'block';
+      updateLanguageChangesDisplay();
+      
+      // Highlight current language
+      document.querySelectorAll('.language-card').forEach(card => {
+        card.classList.remove('selected');
+        const cardLang = card.querySelector('h3').textContent.toLowerCase();
+        if (cardLang === currentLanguage || 
+            (currentLanguage === 'cpp' && cardLang === 'c++') ||
+            (currentLanguage === 'c' && cardLang === 'c')) {
+          card.classList.add('selected');
+        }
+      });
+    }
+    
+    function updateCurrentLanguageDisplay() {
+      const langDisplay = document.getElementById('current-lang-display');
+      if (langDisplay && currentLanguage) {
+        const displayNames = { c: 'C', cpp: 'C++', java: 'Java', python: 'Python' };
+        langDisplay.textContent = displayNames[currentLanguage] || currentLanguage;
+      }
     }
 
     function loadQuestions(language) {
@@ -239,14 +324,43 @@
         document.getElementById('language-selection').style.display = 'none';
         document.getElementById('quiz-container').style.display = 'block';
         
+        // Update language display in toolbar
+        updateCurrentLanguageDisplay();
+        updateLanguageChangesDisplay();
+        
         // Initialize question navigation
         renderQuestionNavigation();
         
-        // Start timer
-        startTimer();
+        // Start timer (only if not already running)
+        // Note: startTimer() will restore from saved timestamp if already started
+        if (!roundTimer || !roundTimer._isRunning) {
+          startTimer();
+        } else {
+          // FIX: If timer already exists, update display immediately
+          const timeEl = document.getElementById('timer');
+          if (timeEl && roundTimer) {
+            timeEl.textContent = roundTimer.getFormattedTime();
+            const remaining = roundTimer.getRemaining();
+            if (remaining <= 300) {
+              timeEl.classList.add('timer-warning');
+            }
+          }
+        }
         
-        // Display first question
-        displayQuestion(0);
+        // FIX: Restore current question index if saved, otherwise start at 0
+        try {
+          const savedQuestionIndex = localStorage.getItem('codewar_mcq_current_question_index');
+          const parsedIndex = savedQuestionIndex ? parseInt(savedQuestionIndex, 10) : null;
+          const startIndex = (parsedIndex !== null && !isNaN(parsedIndex) && parsedIndex >= 0 && parsedIndex < questions.length) 
+            ? parsedIndex 
+            : 0;
+          
+          // Display the restored question (or first question)
+          displayQuestion(startIndex);
+        } catch (e) {
+          console.error('Error restoring question index:', e);
+          displayQuestion(0);
+        }
       } catch (error) {
         console.error('Error loading questions:', error);
         // NON-BLOCKING: Prevents timer desync during error display
@@ -280,6 +394,13 @@
       }
       
       currentQuestionIndex = index;
+      
+      // FIX: Save current question index for restoration on refresh
+      try {
+        localStorage.setItem('codewar_mcq_current_question_index', index.toString());
+      } catch (e) {
+        console.error('Error saving question index:', e);
+      }
       const question = questions[index];
       
       if (!question) {
@@ -388,6 +509,16 @@
           }
         }
       });
+      
+      // FIX: Update timer display immediately after starting (especially important on refresh)
+      const timeEl = document.getElementById('timer');
+      if (timeEl && roundTimer) {
+        timeEl.textContent = roundTimer.getFormattedTime();
+        const remaining = roundTimer.getRemaining();
+        if (remaining <= 300) {
+          timeEl.classList.add('timer-warning');
+        }
+      }
     }
 
     async function submitQuiz(autoSubmit = false) {
@@ -421,6 +552,11 @@
       isSubmitting = true;
       
       try {
+        // Get time info before stopping timer
+        const timeRemaining = roundTimer ? roundTimer.getRemaining() : 0;
+        const totalTime = ROUND_DURATIONS.mcq * 60;
+        const timeUsed = totalTime - timeRemaining;
+        
         // Stop timer and anti-cheat
         if (roundTimer) roundTimer.prepareForSubmission();
         if (antiCheat) antiCheat.stop();
@@ -432,22 +568,19 @@
           submitBtn.textContent = 'Submitting...';
         }
 
-        // FIX: Calculate score using server validation (or demo mode)
+        // Validate answers and count correct
         let correct = 0;
         if (questions.length === 0) {
-          // NON-BLOCKING: showAlert instead of alert()
           showAlert('No questions to submit', 'Error', 'error');
           isSubmitting = false;
           return;
         }
 
-        // Validate answers
         for (const q of questions) {
           if (!q || !q.id) continue;
           const userAnswer = answers[q.id];
           if (userAnswer) {
             try {
-              // Use the new server-side validation function
               const result = await validateMCQAnswer(q.id, userAnswer, currentLanguage);
               if (result.correct) {
                 correct++;
@@ -458,37 +591,114 @@
           }
         }
 
+        // Get accumulated penalties for this round
+        const penalties = StorageManager.getRoundPenalties() || 0;
+        
+        // Calculate score using ScoringSystem
+        const scoreData = ScoringSystem.calculateRoundScore(
+          'mcq', correct, timeRemaining, totalTime, penalties
+        );
+        
+        // Save detailed score data
+        ScoringSystem.saveRoundScore('mcq', scoreData, timeUsed);
+        
+        // Also save legacy format for backwards compatibility
         const percentage = questions.length > 0 ? 
           Math.max(0, Math.min(100, Math.round((correct / questions.length) * 100))) : 0;
-        
         StorageManager.setMCQScore(correct, percentage, questions.length);
         
-        // FIX: Set current round to 'debug' (NOT 'completed')
-        StorageManager.setCurrentRound('debug');
+        // Check elimination threshold
+        const eliminationResult = ScoringSystem.checkEliminationThreshold('mcq', scoreData.totalScore);
         
-        if (autoSubmit) {
-          // NON-BLOCKING: showAutoExit with countdown instead of alert()
-          // This prevents focus theft and allows clean redirect
-          showAutoExit('Time expired! Your answers have been submitted automatically.', 
-            'index.html', 3);
+        // Mark navigation as legitimate
+        if (typeof markLegitimateNavigation === 'function') {
+          markLegitimateNavigation();
+        }
+        
+        if (!eliminationResult.passed && !StorageManager.hasAdminOverride()) {
+          // User eliminated - show elimination modal
+          ScoringSystem.markEliminated('mcq');
+          StorageManager.setCurrentRound('completed');
+          
+          showEliminationModal({
+            round: 'MCQ',
+            score: scoreData.totalScore,
+            threshold: eliminationResult.threshold,
+            percentage: eliminationResult.percentage,
+            requiredPercentage: eliminationResult.requiredPercentage,
+            message: eliminationResult.message
+          });
         } else {
-          // Manual submission - redirect immediately
-          window.location.href = 'index.html';
+          // User passed - proceed to next round
+          StorageManager.setCurrentRound('debug');
+          
+          if (autoSubmit) {
+            showAutoExit('Time expired! Your answers have been submitted automatically.', 
+              'index.html', 3);
+          } else {
+            window.location.href = 'index.html';
+          }
         }
       } catch (error) {
         console.error('Error submitting quiz:', error);
-        // NON-BLOCKING: showAlert instead of blocking alert()
         showAlert('An error occurred while submitting. Please try again.', 
           'Submission Error', 'error');
         isSubmitting = false;
         
-        // Re-enable button
         const submitBtn = document.getElementById('submit-btn');
         if (submitBtn) {
           submitBtn.disabled = false;
           submitBtn.textContent = 'Submit Quiz';
         }
       }
+    }
+    
+    // Show elimination modal
+    function showEliminationModal(data) {
+      const modal = document.createElement('div');
+      modal.className = 'modal-overlay';
+      modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 100000;
+      `;
+      
+      modal.innerHTML = `
+        <div style="background: var(--bg-secondary); padding: 40px; border-radius: 15px; border: 3px solid var(--accent-red); max-width: 500px; text-align: center;">
+          <div style="font-size: 64px; margin-bottom: 20px;">⚠️</div>
+          <h2 style="color: var(--accent-red); margin-bottom: 20px;">Round Not Passed</h2>
+          
+          <div style="background: var(--bg-primary); padding: 20px; border-radius: 10px; margin: 20px 0;">
+            <p style="color: var(--text-secondary); margin-bottom: 10px;">Your ${data.round} Score:</p>
+            <div style="font-size: 2.5em; font-weight: bold; color: var(--accent-red);">
+              ${data.score.toFixed(1)} points
+            </div>
+            <p style="color: var(--text-secondary); margin-top: 10px;">(${data.percentage}%)</p>
+          </div>
+          
+          <p style="color: var(--text-secondary); margin: 20px 0;">
+            Minimum required: <strong style="color: var(--accent-yellow);">${data.threshold} points (${data.requiredPercentage}%)</strong>
+          </p>
+          
+          <p style="color: var(--text-secondary); font-size: 0.9em; margin-bottom: 25px;">
+            Unfortunately, you did not meet the minimum score to advance to the next round.
+            Your answers have been saved.
+          </p>
+          
+          <button class="btn btn-danger" onclick="window.location.href='results.html'" style="padding: 15px 40px; font-size: 1.1em;">
+            View Results
+          </button>
+        </div>
+      `;
+      
+      document.body.appendChild(modal);
     }
   </script>
 </body>

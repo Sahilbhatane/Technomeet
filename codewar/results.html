@@ -42,7 +42,7 @@
 
       <div class="results-container" style="margin-top: 30px;">
         <h3>Competition Statistics</h3>
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-top: 20px;">
           <div class="score-card">
             <h4>Warnings</h4>
             <div style="font-size: 2em; color: var(--accent-yellow);" id="warnings-count">0</div>
@@ -50,6 +50,11 @@
           <div class="score-card">
             <h4>Tab Switches</h4>
             <div style="font-size: 2em; color: var(--accent-yellow);" id="tab-switches-count">0</div>
+          </div>
+          <div class="score-card">
+            <h4>Network Activity</h4>
+            <div style="font-size: 2em;" id="network-count">0</div>
+            <p style="font-size: 0.75em; color: var(--text-secondary);">External requests</p>
           </div>
           <div class="score-card">
             <h4>Registration Code</h4>
@@ -171,11 +176,23 @@
       // Display statistics
       const warnings = StorageManager.getWarnings();
       const tabSwitches = StorageManager.getTabSwitches();
+      const networkRequests = StorageManager.getNetworkRequests();
       const regCode = StorageManager.getRegistrationCode();
 
       document.getElementById('warnings-count').textContent = warnings;
       document.getElementById('tab-switches-count').textContent = tabSwitches;
       document.getElementById('reg-code').textContent = regCode || 'N/A';
+      
+      // Display network activity with color coding
+      const networkEl = document.getElementById('network-count');
+      networkEl.textContent = networkRequests;
+      if (networkRequests === 0) {
+        networkEl.style.color = 'var(--accent-green)';  // Clean - no external requests
+      } else if (networkRequests <= 2) {
+        networkEl.style.color = 'var(--accent-yellow)';  // Minor - could be accidental
+      } else {
+        networkEl.style.color = 'var(--accent-red)';  // Suspicious - multiple external requests
+      }
     }
 
     function downloadResults() {
@@ -186,6 +203,7 @@
         psScore: StorageManager.getPSScore(),
         warnings: StorageManager.getWarnings(),
         tabSwitches: StorageManager.getTabSwitches(),
+        networkRequests: StorageManager.getNetworkRequests(),
         timestamp: new Date().toISOString()
       };
 

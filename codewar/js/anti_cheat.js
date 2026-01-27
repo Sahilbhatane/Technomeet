@@ -36,6 +36,11 @@ class AntiCheatSystem {
     this._devToolsOpen = false;
     this._devToolsCheckCount = 0;
     
+    // Network activity tracking
+    this._networkRequests = StorageManager.getNetworkRequests();
+    this._originalFetch = null;
+    this._originalXHROpen = null;
+    
     // Store fingerprint
     const storedFingerprint = StorageManager.get(StorageManager.STORAGE_KEYS.FINGERPRINT);
     if (!storedFingerprint) {
@@ -56,9 +61,134 @@ class AntiCheatSystem {
     this.setupDevToolsDetection();
     this.setupMultipleTabDetection();
     this.setupPageRefreshPrevention();
+    this.setupNetworkDetection();
     
     // FIX: Removed startContinuousMonitoring() - it was causing false positives
     console.log('[ANTI-CHEAT] Initialized with', this.warnings, 'existing warnings');
+  }
+
+  /**
+   * Network activity detection
+   * Monitors for suspicious external network requests (e.g., searching for answers)
+   * Only tracks requests to external domains, not our own app
+   */
+  setupNetworkDetection() {
+    const self = this;
+    
+    // List of allowed domains (our own endpoints)
+    const allowedDomains = [
+      window.location.hostname,
+      'localhost',
+      '127.0.0.1',
+      ''  // Empty means same-origin relative URLs
+    ];
+    
+    // List of allowed paths/patterns (API endpoints, etc.)
+    const allowedPatterns = [
+      '/api/',
+      '/js/',
+      '/css/',
+      '/images/',
+      '/fonts/',
+      'favicon',
+      '.ico',
+      'codewar'
+    ];
+    
+    /**
+     * Check if a URL is suspicious (external, potentially cheating)
+     */
+    const isSuspiciousUrl = (url) => {
+      try {
+        // Handle relative URLs
+        if (!url || typeof url !== 'string') return false;
+        
+        // Parse URL
+        let parsedUrl;
+        try {
+          parsedUrl = new URL(url, window.location.origin);
+        } catch (e) {
+          return false;  // Can't parse = probably internal
+        }
+        
+        const hostname = parsedUrl.hostname;
+        const pathname = parsedUrl.pathname.toLowerCase();
+        const fullUrl = url.toLowerCase();
+        
+        // Allow same-origin requests
+        if (allowedDomains.includes(hostname)) {
+          return false;
+        }
+        
+        // Allow allowed patterns
+        for (const pattern of allowedPatterns) {
+          if (pathname.includes(pattern) || fullUrl.includes(pattern)) {
+            return false;
+          }
+        }
+        
+        // External request - suspicious
+        console.log('[ANTI-CHEAT] Suspicious network request:', hostname, pathname);
+        return true;
+      } catch (e) {
+        return false;
+      }
+    };
+    
+    /**
+     * Record network activity
+     */
+    const recordNetworkActivity = (url) => {
+      if (!self.enabled) return;
+      
+      if (isSuspiciousUrl(url)) {
+        self._networkRequests++;
+        StorageManager.incrementNetworkRequests();
+        console.log(`[ANTI-CHEAT] External network request detected (${self._networkRequests} total)`);
+        
+        // Record as violation (could trigger warning if too many)
+        self._recordViolation('external_network');
+      }
+    };
+    
+    // Intercept fetch API
+    if (typeof window.fetch === 'function') {
+      this._originalFetch = window.fetch;
+      window.fetch = function(input, init) {
+        const url = typeof input === 'string' ? input : (input && input.url);
+        recordNetworkActivity(url);
+        return self._originalFetch.apply(this, arguments);
+      };
+    }
+    
+    // Intercept XMLHttpRequest
+    if (typeof XMLHttpRequest !== 'undefined') {
+      this._originalXHROpen = XMLHttpRequest.prototype.open;
+      XMLHttpRequest.prototype.open = function(method, url) {
+        recordNetworkActivity(url);
+        return self._originalXHROpen.apply(this, arguments);
+      };
+    }
+    
+    // Use PerformanceObserver to catch all resource loads (images, scripts, etc.)
+    if (typeof PerformanceObserver !== 'undefined') {
+      try {
+        const observer = new PerformanceObserver((list) => {
+          for (const entry of list.getEntries()) {
+            if (entry.initiatorType === 'fetch' || 
+                entry.initiatorType === 'xmlhttprequest' ||
+                entry.initiatorType === 'beacon') {
+              recordNetworkActivity(entry.name);
+            }
+          }
+        });
+        observer.observe({ entryTypes: ['resource'] });
+      } catch (e) {
+        console.warn('[ANTI-CHEAT] PerformanceObserver not supported');
+      }
+    }
+    
+    console.log('[ANTI-CHEAT] Network monitoring initialized');
   }
 
   /**

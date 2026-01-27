@@ -96,7 +96,7 @@ Use any of these codes to enter the competition:
    - Answer questions by clicking options
    - Use Next/Previous buttons
    - Click question numbers in the sidebar
-   - Notice "✓ Saved" indicator when you answer
+   - Notice "✓ Auto Save Enabled" indicator when you answer
 
 3. **Test persistence**
    - Answer a few questions
@@ -310,7 +310,7 @@ If reset page doesn't work:
 ### During MCQ
 - [ ] Valid code accepted
 - [ ] Timer starts and runs
-- [ ] Answers save with "✓ Saved"
+- [ ] Answers save with "✓ Auto Save Enabled"
 - [ ] Refresh preserves timer and answers
 - [ ] Submit shows confirmation modal
 

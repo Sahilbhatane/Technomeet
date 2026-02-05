@@ -1,0 +1,268 @@
+Question 1:
+The following code uses a macro that takes an expression and a function call with side effects. What is the behavior when the macro is invoked as shown?
+
+Code:
+```c
+#include <stdio.h>
+#define APPLY(f, x)  (f)((x), (x))
+int side(int *p, int *q) { return (*p)++ + (*q)++; }
+int main(void) {
+    int v = 1;
+    printf("%d\n", APPLY(side, &v));
+    printf("%d\n", v);
+    return 0;
+}
+```
+Options:
+A) Prints 2 then 3 (v becomes 3)
+B) Prints 2 then 2 (v becomes 2)
+C) Undefined behavior
+D) Unspecified: may print 2 then 2 or 2 then 3
+
+Correct Answer: C
+
+Short Explanation: APPLY(side, &v) expands to (side)((&v), (&v)). Both arguments are &v, so the same object v is modified twice in the same expression without an intervening sequence point (two (*p)++ and (*q)++ on the same object). That is undefined behavior per C99/C11 (6.5/2: between two sequence points, an object shall have its stored value modified at most once).
+
+---
+
+Question 2:
+The code below uses restrict and passes the same pointer twice. What does the C standard say about the behavior?
+
+Code:
+```c
+#include <stdio.h>
+void add(int n, int * restrict a, int * restrict b) {
+    for (int i = 0; i < n; i++)
+        a[i] += b[i];
+}
+int main(void) {
+    int x[] = {1, 2, 3};
+    add(3, x, x);
+    for (int i = 0; i < 3; i++) printf("%d ", x[i]);
+    return 0;
+}
+```
+Options:
+A) Prints 2 4 6 (well-defined, restrict ignored when same pointer)
+B) Prints 1 2 3 (no modification)
+C) Undefined behavior
+D) Implementation-defined
+
+Correct Answer: C
+
+Short Explanation: Passing the same pointer for two restrict parameters violates the restrict contract: within the function, a and b must not be based on the same object. The program invokes undefined behavior per 6.7.3.1 (if L is used to access X and also to access Y, and X and Y overlap, behavior is undefined).
+
+---
+
+Question 3:
+The following fragment uses volatile and an expression that reads the same volatile object twice. What can be said about the result and optimization?
+
+Code:
+```c
+#include <stdio.h>
+volatile int flag = 0;
+int main(void) {
+    int x = flag + flag;
+    (void)x;
+    return 0;
+}
+```
+Options:
+A) x is always 0; compiler may optimize to a single read of flag
+B) x is always 0; compiler must perform two reads of flag
+C) Unspecified whether one or two reads occur; x may be 0 or 2*flag
+D) Undefined behavior
+
+Correct Answer: B
+
+Short Explanation: volatile requires that each access to flag be performed (no elision of reads). So the implementation must read flag twice. The value of x is 0+0 if flag is 0 at both reads; if an external agent changes flag between reads, x could differ. The key point: two distinct accesses are required; optimization cannot fold them into one.
+
+---
+
+Question 4:
+What is the behavior of this program regarding evaluation order and side effects?
+
+Code:
+```c
+#include <stdio.h>
+int f(int *a, int *b) { (*a)++; return *b; }
+int main(void) {
+    int x = 1, y = 2;
+    int z = f(&x, &y) + f(&y, &x);
+    printf("%d %d %d\n", x, y, z);
+    return 0;
+}
+```
+Options:
+A) x=2, y=2, z=4 (order of f calls unspecified but result deterministic)
+B) x=2, y=2, z=3
+C) Undefined behavior
+D) Unspecified: multiple outcomes possible for x, y, z
+
+Correct Answer: C
+
+Short Explanation: The + operator does not impose a sequence point between the evaluation of its two operands. So the two calls to f can be interleaved; both modify and read x and y. That yields unsequenced modifications and reads of the same objects, which is undefined behavior per 6.5/2 and 6.5.2.2/10.
+
+---
+
+Question 5:
+The code uses a multi-level pointer and const in different positions. Which option correctly describes the relationship of p and what can be modified?
+
+Code:
+```c
+#include <stdio.h>
+int main(void) {
+    int a = 10, b = 20;
+    int *pa = &a, *pb = &b;
+    int * const * p = &pa;
+    *p = &b;
+    **p = 30;
+    printf("%d %d\n", a, b);
+    return 0;
+}
+```
+Options:
+A) Compiles; prints 10 30 (p is pointer-to-const-pointer-to-int, *p not modifiable)
+B) Compile error: cannot assign &b to *p
+C) Compiles; prints 10 20 (**p modifies b)
+D) Undefined behavior
+
+Correct Answer: B
+
+Short Explanation: p is "pointer to const (pointer to int)". So *p has type "const pointer to int" and is not modifiable. The assignment *p = &b attempts to modify the const-qualified object pointed to by p, which is a constraint violation (assignment to read-only location). The compiler must diagnose this.
+
+---
+
+Question 6:
+The following code returns a pointer to a local array. What is the behavior?
+
+Code:
+```c
+#include <stdio.h>
+char *get_str(void) {
+    char buf[] = "hello";
+    return buf;
+}
+int main(void) {
+    char *p = get_str();
+    printf("%s\n", p);
+    return 0;
+}
+```
+Options:
+A) Prints "hello" (lifetime extended for printf)
+B) Undefined behavior
+C) May print garbage or "hello"; unspecified
+D) Compile error (returning address of local)
+
+Correct Answer: B
+
+Short Explanation: get_str returns a pointer to the first element of buf, which has automatic storage duration. When get_str returns, the lifetime of buf ends. Any use of that pointer value (including in printf) is undefined behavior per 6.2.4/2 (referring to an object outside its lifetime).
+
+---
+
+Question 7:
+The expression involves integer promotion and mixed signed/unsigned operands. What is the type and value of the comparison?
+
+Code:
+```c
+#include <stdio.h>
+#include <limits.h>
+int main(void) {
+    int i = -1;
+    unsigned u = 1;
+    if (i < u)
+        printf("less");
+    else
+        printf("not less");
+    return 0;
+}
+```
+Options:
+A) Prints "less" (signed comparison)
+B) Prints "not less"
+C) Implementation-defined
+D) Undefined behavior
+
+Correct Answer: B
+
+Short Explanation: In i < u, the usual arithmetic conversions apply: int -1 is converted to unsigned. The value is UINT_MAX (or equivalently, a large positive value). So the comparison is (unsigned)(-1) < 1u, which is false. Hence "not less" is printed. This is well-defined but a common pitfall.
+
+---
+
+Question 8:
+The macro is invoked with an argument that has a side effect. What is the output?
+
+Code:
+```c
+#include <stdio.h>
+#define M(x)  ((x) + (x))
+int main(void) {
+    int i = 0;
+    printf("%d\n", M(i++) + M(i++));
+    return 0;
+}
+```
+Options:
+A) 0 (each i++ evaluated once in each M)
+B) 2
+C) Undefined behavior
+D) Unspecified (one of several integer values)
+
+Correct Answer: C
+
+Short Explanation: M(i++) expands to ((i++) + (i++)). In M(i++) + M(i++), there are multiple unsequenced modifications of i (four i++ in total) and no sequence point between the two M(...) operands of +. Modifying i more than once between sequence points is undefined behavior per 6.5/2.
+
+---
+
+Question 9:
+The code shifts a negative value. What does the C standard say about the result?
+
+Code:
+```c
+#include <stdio.h>
+int main(void) {
+    int x = -8;
+    int y = x >> 2;
+    printf("%d\n", y);
+    return 0;
+}
+```
+Options:
+A) -2 (arithmetic right shift required)
+B) Implementation-defined (may be -2 or a large positive)
+C) Undefined behavior
+D) Unspecified
+
+Correct Answer: B
+
+Short Explanation: For negative operands, the result of >> is implementation-defined (C99 6.5.7/5). The implementation may use arithmetic shift (giving -2) or logical shift (giving a large positive value). The standard does not require a single result across implementations.
+
+---
+
+Question 10:
+The function is called with overlapping arrays (same base). What is the behavior?
+
+Code:
+```c
+#include <stdio.h>
+void copy(int n, int *dst, const int *src) {
+    for (int i = 0; i < n; i++)
+        dst[i] = src[i];
+}
+int main(void) {
+    int a[] = {1, 2, 3, 4, 5};
+    copy(5, a + 1, a);
+    for (int i = 0; i < 5; i++) printf("%d ", a[i]);
+    return 0;
+}
+```
+Options:
+A) Prints 1 1 2 3 4 (well-defined copy that propagates first element)
+B) Prints 1 1 1 1 1
+C) Undefined behavior (overlapping copy)
+D) Implementation-defined
+
+Correct Answer: A
+
+Short Explanation: Copying from a to a+1 with count 5 is well-defined: each read of src[i] happens before the write to dst[i] in the same iteration, and the read in iteration i uses a value that was written in a previous iteration. There is no unsequenced read and write of the same object. The result is 1 1 2 3 4 per C's memory model and sequence points within the loop.

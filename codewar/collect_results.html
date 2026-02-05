@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Collect Results - CodeWar</title>
+  <link rel="stylesheet" href="css/codewar.css">
+  <style>
+    .collect-zone {
+      border: 2px dashed var(--border-color);
+      border-radius: 10px;
+      padding: 40px;
+      text-align: center;
+      margin: 20px 0;
+      background: var(--bg-secondary);
+      transition: border-color 0.2s, background 0.2s;
+    }
+    .collect-zone.dragover { border-color: var(--accent-cyan); background: rgba(0,191,255,0.05); }
+    .collect-zone input[type="file"] { display: none; }
+    .collect-zone label { cursor: pointer; color: var(--accent-cyan); text-decoration: underline; }
+    table { width: 100%; border-collapse: collapse; margin: 20px 0; font-size: 0.9em; }
+    th, td { border: 1px solid var(--border-color); padding: 10px; text-align: left; }
+    th { background: var(--bg-secondary); color: var(--accent-cyan); }
+    tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+    .btn-row { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .error-row { color: var(--accent-red); }
+    .stats-bar { display: flex; flex-wrap: wrap; gap: 20px; margin-bottom: 20px; padding: 15px; background: var(--bg-secondary); border-radius: 8px; }
+    .stats-bar span { color: var(--accent-green); font-weight: bold; }
+    #paste-area { width: 100%; min-height: 80px; font-family: monospace; font-size: 12px; padding: 10px; background: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 5px; color: var(--text-primary); margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>Result Collector</h1>
+      <p class="subtitle">CodeWar TechnoMeet 2K26 — Offline lab: add result JSON files and export combined data</p>
+    </div>
+
+    <div class="stats-bar">
+      <span>Participants loaded: <strong id="count">0</strong></span>
+      <span>Total score sum: <strong id="total-sum">0</strong></span>
+    </div>
+
+    <div class="collect-zone" id="drop-zone">
+      <p>Drag &amp; drop one or more <code>codewar-results-*.json</code> files here, or</p>
+      <label for="file-input">Choose files</label>
+      <input type="file" id="file-input" accept=".json,application/json" multiple>
+    </div>
+
+    <div style="margin-top: 20px;">
+      <p style="color: var(--text-secondary); margin-bottom: 8px;">Or paste a single result JSON below and click Add:</p>
+      <textarea id="paste-area" placeholder='{"registrationCode":"CODE-XXXX", "totalScore": 50, ...}'></textarea>
+      <div class="btn-row">
+        <button type="button" class="btn" onclick="addFromPaste()">Add from paste</button>
+      </div>
+    </div>
+
+    <div style="margin-top: 30px; overflow-x: auto;">
+      <table id="results-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Registration Code</th>
+            <th>Total Score</th>
+            <th>MCQ</th>
+            <th>Debug</th>
+            <th>PS</th>
+            <th>Total Time (s)</th>
+            <th>Eliminated</th>
+            <th>Warnings</th>
+            <th>Tab Switches</th>
+            <th>Timestamp</th>
+          </tr>
+        </thead>
+        <tbody id="results-body"></tbody>
+      </table>
+    </div>
+
+    <div class="btn-row">
+      <button type="button" class="btn" onclick="exportCSV()">Export as CSV</button>
+      <button type="button" class="btn btn-secondary" onclick="exportJSON()">Export as JSON</button>
+      <button type="button" class="btn" style="background: var(--accent-red);" onclick="clearAll()">Clear all</button>
+    </div>
+  </div>
+
+  <script>
+    let resultsList = [];
+
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('dragover');
+      const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.json') || f.type === 'application/json');
+      if (files.length) addFiles(files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      const files = e.target.files;
+      if (files && files.length) addFiles(Array.from(files));
+      fileInput.value = '';
+    });
+
+    function normalizeRow(r) {
+      const mcq = r.rounds && r.rounds.mcq;
+      const debug = r.rounds && r.rounds.debug;
+      const ps = r.rounds && r.rounds.ps;
+      return {
+        registrationCode: r.registrationCode || '-',
+        totalScore: Number(r.totalScore) || 0,
+        mcqScore: mcq && (mcq.totalScore != null || mcq.score != null) ? (Number(mcq.totalScore) ?? Number(mcq.score) ?? 0) : 0,
+        debugScore: debug && (debug.totalScore != null || debug.score != null) ? (Number(debug.totalScore) ?? Number(debug.score) ?? 0) : 0,
+        psScore: ps && (ps.totalScore != null || ps.score != null) ? (Number(ps.totalScore) ?? Number(ps.score) ?? 0) : 0,
+        totalTimeUsed: Number(r.totalTimeUsed) || 0,
+        eliminated: !!(r.elimination && r.elimination.eliminated),
+        eliminatedRound: (r.elimination && r.elimination.round) || '',
+        warnings: (r.statistics && r.statistics.warnings) != null ? r.statistics.warnings : 0,
+        tabSwitches: (r.statistics && r.statistics.tabSwitches) != null ? r.statistics.tabSwitches : 0,
+        timestamp: r.timestamp || ''
+      };
+    }
+
+    function addFiles(files) {
+      let added = 0;
+      const readers = Array.from(files).map(f => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            try {
+              const data = JSON.parse(reader.result);
+              if (data && (data.registrationCode != null || data.totalScore != null || data.rounds)) {
+                resultsList.push(normalizeRow(data));
+                added++;
+              }
+            } catch (e) { console.warn('Invalid JSON:', f.name, e); }
+            resolve();
+          };
+          reader.readAsText(f);
+        });
+      });
+      Promise.all(readers).then(() => {
+        renderTable();
+        if (added) document.getElementById('count').focus({ preventScroll: true });
+      });
+    }
+
+    function addFromPaste() {
+      const ta = document.getElementById('paste-area');
+      const text = ta && ta.value && ta.value.trim();
+      if (!text) return;
+      try {
+        const data = JSON.parse(text);
+        if (data && (data.registrationCode != null || data.totalScore != null || data.rounds)) {
+          resultsList.push(normalizeRow(data));
+          ta.value = '';
+          renderTable();
+        } else {
+          alert('JSON must contain registrationCode or rounds data.');
+        }
+      } catch (e) {
+        alert('Invalid JSON: ' + e.message);
+      }
+    }
+
+    function renderTable() {
+      const tbody = document.getElementById('results-body');
+      const countEl = document.getElementById('count');
+      const sumEl = document.getElementById('total-sum');
+      tbody.innerHTML = '';
+      let totalSum = 0;
+      resultsList.forEach((row, i) => {
+        totalSum += row.totalScore;
+        const tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td>' + (i + 1) + '</td>' +
+          '<td>' + escapeHtml(row.registrationCode) + '</td>' +
+          '<td>' + row.totalScore + '</td>' +
+          '<td>' + row.mcqScore + '</td>' +
+          '<td>' + row.debugScore + '</td>' +
+          '<td>' + row.psScore + '</td>' +
+          '<td>' + row.totalTimeUsed + '</td>' +
+          '<td>' + (row.eliminated ? 'Yes (' + (row.eliminatedRound || '-') + ')' : 'No') + '</td>' +
+          '<td>' + row.warnings + '</td>' +
+          '<td>' + row.tabSwitches + '</td>' +
+          '<td>' + escapeHtml(String(row.timestamp).slice(0, 19)) + '</td>';
+        tbody.appendChild(tr);
+      });
+      countEl.textContent = resultsList.length;
+      sumEl.textContent = totalSum;
+    }
+
+    function escapeHtml(s) {
+      const div = document.createElement('div');
+      div.textContent = s;
+      return div.innerHTML;
+    }
+
+    function exportCSV() {
+      if (!resultsList.length) { alert('No results to export.'); return; }
+      const headers = ['#', 'Registration Code', 'Total Score', 'MCQ', 'Debug', 'PS', 'Total Time (s)', 'Eliminated', 'Eliminated Round', 'Warnings', 'Tab Switches', 'Timestamp'];
+      const rows = resultsList.map((r, i) => [
+        i + 1,
+        r.registrationCode,
+        r.totalScore,
+        r.mcqScore,
+        r.debugScore,
+        r.psScore,
+        r.totalTimeUsed,
+        r.eliminated ? 'Yes' : 'No',
+        r.eliminatedRound,
+        r.warnings,
+        r.tabSwitches,
+        r.timestamp
+      ]);
+      const csv = [headers.map(quoteCsv).join(','), ...rows.map(row => row.map(quoteCsv).join(','))].join('\r\n');
+      downloadBlob(csv, 'codewar-all-results.csv', 'text/csv;charset=utf-8');
+    }
+
+    function quoteCsv(x) {
+      const s = String(x == null ? '' : x);
+      if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
+    function exportJSON() {
+      if (!resultsList.length) { alert('No results to export.'); return; }
+      const json = JSON.stringify(resultsList, null, 2);
+      downloadBlob(json, 'codewar-all-results.json', 'application/json');
+    }
+
+    function downloadBlob(content, filename, type) {
+      const blob = new Blob([content], { type: type || 'application/octet-stream' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function clearAll() {
+      if (!resultsList.length || confirm('Clear all loaded results?')) {
+        resultsList = [];
+        renderTable();
+      }
+    }
+
+    renderTable();
+  </script>
+</body>
+</html>

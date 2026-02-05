@@ -5,8 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Debug Round - CodeWar</title>
   <link rel="stylesheet" href="css/codewar.css">
+  <style>
+    /* Rules widget: always top-right, panel only on hover */
+    .rules-widget {
+      position: fixed !important;
+      top: 12px !important;
+      left: 12px !important;
+      z-index: 9999 !important;
+    }
+    .rules-widget-panel {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    .rules-widget:hover .rules-widget-panel {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+  </style>
 </head>
 <body>
+  <div class="rules-widget" data-round="debug">
+    <span class="rules-widget-icon" aria-label="Rules">📋</span>
+    <div class="rules-widget-panel">
+      <h4>General rules</h4>
+      <ul>
+        <li>Rounds: MCQ → Debug → PS. Timer does not reset on refresh.</li>
+        <li>Avoid tab switch, copy-paste, or external sites; penalties may apply.</li>
+      </ul>
+      <div class="rules-round-section">
+        <h4>This round: Debug</h4>
+        <ul>
+          <li>5 questions, 45 minutes. Fix all bugs in the given code.</li>
+          <li>Same language as MCQ; you can change it up to 2 times.</li>
+          <li>Submit the complete corrected code for each question.</li>
+          <li>Use Verify to check; Save to store progress.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
   <div class="container">
     <div class="header">
       <h1>Round 2: Debug Code</h1>

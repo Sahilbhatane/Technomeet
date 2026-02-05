@@ -83,6 +83,20 @@ start_server.bat
 - Press Ctrl+C in the PowerShell window
 - Or close the PowerShell window
 
+## Collecting Results (Offline Lab)
+
+After the exam, each participant's result file is **auto-downloaded** when they open the Results page. Filenames look like: `codewar-results-CODE-XXXX-2026-02-05T12-30-00.json`.
+
+**To collect all results in one place:**
+
+1. Gather the JSON files from each lab machine (Downloads folder or wherever the browser saved them)—via USB drive, shared folder, or network copy.
+2. On one machine, open the platform and go to **Collect Results**: open `collect_results.html` (or use the footer link "Invigilator: Collect all result files" on the main page).
+3. Drag & drop all `codewar-results-*.json` files (or use "Choose files") to load them.
+4. Click **Export as CSV** to get a single spreadsheet with all participants (Registration Code, Total Score, MCQ/Debug/PS scores, time, elimination, warnings). Open in Excel or Google Sheets for analysis.
+5. Optionally click **Export as JSON** to save the combined data as one JSON file.
+
+No server or internet is required for collection; the collector runs entirely in the browser.
+
 ## For Event Day
 
 1. **Before Event**:
@@ -98,6 +112,7 @@ start_server.bat
 3. **After Event**:
    - Close the server window
    - Or press Ctrl+C
+   - Collect result JSONs from each PC and use **Collect Results** to merge and export CSV
 
 ---
 

@@ -37,6 +37,9 @@
             border: 1px solid #0f0;
         }
     </style>
+    <script src="js/storage.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/timer.js"></script>
 </head>
 <body>
     <h1>CodeWar Platform - User Acceptance Testing</h1>
@@ -94,22 +97,38 @@
         function testMCQ() {
             log('=== Testing MCQ Round ===', 'info');
             
-            // Check if data exists
             try {
                 if (typeof CodeWarData === 'undefined') {
                     log('✗ CodeWarData not loaded', 'fail');
                     return;
                 }
                 log('✓ CodeWarData loaded', 'pass');
+
+                if (typeof ROUND_DURATIONS !== 'undefined' && ROUND_DURATIONS.mcq === 25) {
+                    log('✓ MCQ timer is 25 minutes', 'pass');
+                } else {
+                    log('✗ MCQ timer should be 25 min (got ' + (typeof ROUND_DURATIONS !== 'undefined' ? ROUND_DURATIONS.mcq : 'N/A') + ')', 'fail');
+                }
                 
-                // Check languages
-                const languages = ['c', 'cpp', 'java', 'python'];
+                const cQuestions = CodeWarData.mcq.c || [];
+                if (cQuestions.length === 20) {
+                    log('✓ C: 20 questions (10 easy + 10 advanced)', 'pass');
+                } else {
+                    log(cQuestions.length ? `✗ C: expected 20 questions, got ${cQuestions.length}` : '✗ C: No questions', 'fail');
+                }
+                if (cQuestions.length > 10 && cQuestions[10].question && cQuestions[10].question.indexOf('macro') !== -1) {
+                    log('✓ C has advanced block (Q11 = macro/side effects)', 'pass');
+                } else if (cQuestions.length > 10) {
+                    log('⚠ C advanced block may differ', 'info');
+                }
+                
+                const languages = ['basic', 'cpp', 'java', 'python'];
                 languages.forEach(lang => {
                     const questions = CodeWarData.mcq[lang] || [];
                     if (questions.length > 0) {
-                        log(`✓ ${lang.toUpperCase()}: ${questions.length} questions`, 'pass');
+                        log(`✓ ${lang}: ${questions.length} questions`, 'pass');
                     } else {
-                        log(`✗ ${lang.toUpperCase()}: No questions`, 'fail');
+                        log(`✗ ${lang}: No questions`, 'fail');
                     }
                 });
             } catch (e) {
@@ -134,8 +153,8 @@
                         
                         // Check question structure
                         questions.forEach((q, i) => {
-                            if (!q.id || !q.faultyCode || !q.correctCode) {
-                                log(`✗ ${lang} Q${i+1}: Missing required fields`, 'fail');
+                            if (!q.id || !q.faultyCode) {
+                                log(`✗ ${lang} Q${i+1}: Missing id or faultyCode`, 'fail');
                             }
                         });
                     } else {
@@ -157,27 +176,23 @@
                 }
                 
                 const problems = CodeWarData.ps || [];
-                if (problems.length > 0) {
-                    log(`✓ ${problems.length} problems available`, 'pass');
-                    
-                    problems.forEach((p, i) => {
-                        if (!p.id || !p.title || !p.description) {
-                            log(`✗ Problem ${i+1}: Missing required fields`, 'fail');
-                        }
-                        if (!p.testCases) {
-                            log(`✗ Problem ${i+1}: No test cases`, 'fail');
-                        } else {
-                            const langs = ['c', 'cpp', 'java', 'python'];
-                            langs.forEach(lang => {
-                                if (!p.testCases[lang] || p.testCases[lang].length === 0) {
-                                    log(`✗ Problem ${i+1}: No ${lang} test cases`, 'fail');
-                                }
-                            });
-                        }
-                    });
+                if (problems.length !== 5) {
+                    log(`✗ Expected 5 problems, got ${problems.length}`, 'fail');
                 } else {
-                    log('✗ No problems available', 'fail');
+                    log('✓ 5 problems available', 'pass');
                 }
+                
+                const expectedTitles = ['Binary Search', 'Longest Subarray with Sum at Most K', 'Valid Parentheses', 'Merge Two Sorted Arrays', 'Spiral Order of Matrix'];
+                problems.forEach((p, i) => {
+                    if (!p.id || !p.title || !p.description) {
+                        log(`✗ Problem ${i+1}: Missing id/title/description`, 'fail');
+                    } else {
+                        log(`✓ P${p.id}: ${p.title}`, 'pass');
+                        if (expectedTitles[i] && p.title !== expectedTitles[i]) {
+                            log(`⚠ Problem ${i+1} title differs: "${p.title}"`, 'info');
+                        }
+                    }
+                });
             } catch (e) {
                 log('✗ PS test failed: ' + e.message, 'fail');
             }

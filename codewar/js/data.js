@@ -153,10 +153,10 @@ function getDemoMCQAnswers(language) {
   // In production, validation happens server-side
   const answers = {
     basic: { 1: 'C', 2: 'C', 3: 'C', 4: 'C', 5: 'C', 6: 'B', 7: 'C', 8: 'A', 9: 'C', 10: 'C', 11: 'B', 12: 'C', 13: 'C', 14: 'C', 15: 'D', 16: 'C', 17: 'B', 18: 'D', 19: 'B', 20: 'C' },
-    c: { 1: 'B', 2: 'A', 3: 'B', 4: 'B', 5: 'B', 6: 'A', 7: 'B', 8: 'A', 9: 'B', 10: 'B', 11: 'B', 12: 'A', 13: 'A', 14: 'C', 15: 'B', 16: 'A', 17: 'B', 18: 'A', 19: 'A', 20: 'A' },
-    cpp: { 1: 'B', 2: 'B', 3: 'B', 4: 'B', 5: 'B', 6: 'B', 7: 'C', 8: 'B', 9: 'C', 10: 'B', 11: 'B', 12: 'B', 13: 'B', 14: 'C', 15: 'B', 16: 'C', 17: 'C', 18: 'A', 19: 'B', 20: 'C' },
-    java: { 1: 'B', 2: 'C', 3: 'C', 4: 'C', 5: 'C', 6: 'C', 7: 'B', 8: 'C', 9: 'C', 10: 'B', 11: 'A', 12: 'B', 13: 'B', 14: 'B', 15: 'A', 16: 'C', 17: 'C', 18: 'C', 19: 'B', 20: 'C' },
-    python: { 1: 'D', 2: 'B', 3: 'B', 4: 'B', 5: 'B', 6: 'C', 7: 'C', 8: 'C', 9: 'C', 10: 'B', 11: 'B', 12: 'C', 13: 'B', 14: 'B', 15: 'B', 16: 'B', 17: 'B', 18: 'B', 19: 'B', 20: 'D' }
+    c: { 1: 'B', 2: 'A', 3: 'B', 4: 'B', 5: 'B', 6: 'A', 7: 'B', 8: 'A', 9: 'B', 10: 'B', 11: 'C', 12: 'C', 13: 'B', 14: 'C', 15: 'B', 16: 'B', 17: 'B', 18: 'C', 19: 'A', 20: 'A' },
+    cpp: { 1: 'B', 2: 'B', 3: 'B', 4: 'B', 5: 'B', 6: 'B', 7: 'A', 8: 'B', 9: 'C', 10: 'B', 11: 'C', 12: 'A', 13: 'B', 14: 'B', 15: 'D', 16: 'A', 17: 'B', 18: 'B', 19: 'A', 20: 'A' },
+    java: { 1: 'B', 2: 'C', 3: 'C', 4: 'C', 5: 'C', 6: 'C', 7: 'B', 8: 'C', 9: 'C', 10: 'B', 11: 'C', 12: 'A', 13: 'A', 14: 'A', 15: 'A', 16: 'A', 17: 'A', 18: 'A', 19: 'A', 20: 'A' },
+    python: { 1: 'D', 2: 'B', 3: 'B', 4: 'B', 5: 'B', 6: 'C', 7: 'C', 8: 'C', 9: 'C', 10: 'B', 11: 'B', 12: 'A', 13: 'D', 14: 'A', 15: 'B', 16: 'A', 17: 'A', 18: 'A', 19: 'B', 20: 'A' }
   };
   return answers[language] || answers.basic;
 }
@@ -219,33 +219,55 @@ function evaluatePSCodeDemo(problemId, userCode, language) {
   if (!problem) return [];
   
   const testInputs = {
-    1: [{ input: '5 3', expected: '8' }, { input: '10 20', expected: '30' }, { input: '100 200', expected: '300' }],
-    2: [{ input: '3', expected: '*\n**\n***' }, { input: '1', expected: '*' }],
-    3: [{ input: '5 10 3', expected: '10' }, { input: '1 2 3', expected: '3' }],
-    4: [{ input: '5', expected: '120' }, { input: '0', expected: '1' }, { input: '3', expected: '6' }],
-    5: [{ input: '5', expected: 'Odd' }, { input: '4', expected: 'Even' }, { input: '0', expected: 'Even' }]
+    1: [{ input: '5 1 3 5 7 9 5', expected: '2' }, { input: '4 2 4 6 8 5', expected: '-1' }, { input: '3 10 20 30 20', expected: '1' }],
+    2: [{ input: '6 1 -2 3 4 -1 2 5', expected: '4' }, { input: '3 2 2 2 1', expected: '0' }, { input: '4 1 2 3 4 10', expected: '4' }],
+    3: [{ input: '()', expected: 'Valid' }, { input: '([)]', expected: 'Invalid' }, { input: '{[]}', expected: 'Valid' }],
+    4: [{ input: '3 1 3 5 3 2 4 6', expected: '1 2 3 4 5 6' }, { input: '1 1 1 1', expected: '1 1' }, { input: '2 1 2 2 3 4', expected: '1 2 3 4' }],
+    5: [{ input: '2 3 1 2 3 4 5 6', expected: '1 2 3 6 5 4' }, { input: '3 3 1 2 3 4 5 6 7 8 9', expected: '1 2 3 6 9 8 7 4 5' }, { input: '1 2 10 20', expected: '10 20' }]
   };
-  
+
   const tests = testInputs[problemId] || [];
-  const normalizedCode = userCode.toLowerCase();
-  
+  const normalizedCode = userCode.replace(/\s+/g, ' ').toLowerCase();
+  const lineCount = userCode.split(/\r?\n/).filter(function(line) { return line.trim().length > 0; }).length;
+
   return tests.map((test, index) => {
-    // Pattern-based evaluation
     let passed = false;
-    const inputs = test.input.split(' ').map(Number);
-    
-    // Check for correct logic patterns
-    if (problemId === 1 && normalizedCode.includes('+')) passed = true;
-    if (problemId === 2 && normalizedCode.includes('*') && (normalizedCode.includes('for') || normalizedCode.includes('range'))) passed = true;
-    if (problemId === 3 && (normalizedCode.includes('max') || normalizedCode.includes('>'))) passed = true;
-    if (problemId === 4 && (normalizedCode.includes('factorial') || normalizedCode.includes('*'))) passed = true;
-    if (problemId === 5 && normalizedCode.includes('%') && normalizedCode.includes('2')) passed = true;
-    
+    // Require non-trivial solutions: at least 15 lines of code (excluding empty lines)
+    const hasMinLines = lineCount >= 15;
+
+    // Pattern checks that imply non-trivial algorithm (10+ LOC typical)
+    if (problemId === 1 && hasMinLines) {
+      const hasBinarySearch = (normalizedCode.includes('mid') || normalizedCode.includes('middle')) &&
+        (normalizedCode.includes('low') && normalizedCode.includes('high') || normalizedCode.includes('left') && normalizedCode.includes('right') || normalizedCode.includes('start') && normalizedCode.includes('end'));
+      const hasLoop = normalizedCode.includes('while') || normalizedCode.includes('for') || normalizedCode.includes('recursion') || normalizedCode.includes('recurse');
+      passed = hasBinarySearch && hasLoop;
+    }
+    if (problemId === 2 && hasMinLines) {
+      const hasSubarrayLogic = (normalizedCode.includes('sum') || normalizedCode.includes('total')) && (normalizedCode.includes('for') || normalizedCode.includes('while'));
+      const hasLengthTrack = normalizedCode.includes('length') || normalizedCode.includes('max') || normalizedCode.includes('longest') || normalizedCode.includes('count');
+      passed = hasSubarrayLogic && hasLengthTrack;
+    }
+    if (problemId === 3 && hasMinLines) {
+      const hasStackOrMatch = normalizedCode.includes('stack') || normalizedCode.includes('push') && normalizedCode.includes('pop') || (normalizedCode.includes('(') && normalizedCode.includes(')') && (normalizedCode.includes('[') || normalizedCode.includes('{')));
+      const hasLoop = normalizedCode.includes('for') || normalizedCode.includes('while') || normalizedCode.includes('each') || normalizedCode.includes('char');
+      passed = hasStackOrMatch && hasLoop;
+    }
+    if (problemId === 4 && hasMinLines) {
+      const hasTwoPointers = (normalizedCode.includes('i') && normalizedCode.includes('j') && normalizedCode.includes('array')) || normalizedCode.includes('index') || normalizedCode.includes('pointer');
+      const hasMergeLogic = normalizedCode.includes('merge') || normalizedCode.includes('sorted') || (normalizedCode.includes('while') && normalizedCode.includes('append') || normalizedCode.includes('add'));
+      passed = hasTwoPointers || hasMergeLogic;
+    }
+    if (problemId === 5 && hasMinLines) {
+      const hasBounds = normalizedCode.includes('row') && normalizedCode.includes('col') || normalizedCode.includes('top') && normalizedCode.includes('bottom') || normalizedCode.includes('left') && normalizedCode.includes('right') || normalizedCode.includes('bound');
+      const hasDirection = normalizedCode.includes('direction') || normalizedCode.includes('spiral') || normalizedCode.includes('loop') && normalizedCode.includes('matrix');
+      passed = hasBounds || hasDirection;
+    }
+
     return {
       testCase: index + 1,
       input: test.input,
       expected: test.expected,
-      actual: passed ? test.expected : 'Pattern check failed',
+      actual: passed ? test.expected : (lineCount < 15 ? 'Solution too short (need 15+ LOC)' : 'Pattern check failed'),
       passed
     };
   });
@@ -290,16 +312,16 @@ const CodeWarData = {
       { id: 8, question: "Which symbol is used to end a statement in C?", code: "", options: [";", ".", ",", ":"] },
       { id: 9, question: "What will be the output?", code: "printf(\"%d\", 5 + 3 * 2);", options: ["16", "11", "10", "13"] },
       { id: 10, question: "What will be the output?", code: "static int x; if(x) printf(\"Yes\"); else printf(\"No\");", options: ["Yes", "No", "0", "Garbage"] },
-      { id: 11, question: "Which header file is required for printf?", code: "", options: ["stdlib.h", "stdio.h", "conio.h", "string.h"] },
-      { id: 12, question: "Identify the correct statement about this pointer usage", code: "int const *p = x;", options: ["p points to constant int", "Constant pointer to int", "Both constant", "Compile error"] },
-      { id: 13, question: "What is the output?", code: "int x = 1; switch(x) { case 1: printf(\"1\"); break; case 2: printf(\"2\"); }", options: ["1", "12", "2", "Nothing"] },
-      { id: 14, question: "What is the default value of an uninitialized local variable?", code: "", options: ["0", "NULL", "Garbage value", "Depends on data type"] },
-      { id: 15, question: "Which option best describes the issue in this code?", code: "char p[5]; strcpy(p, \"Code\");", options: ["Buffer overflow", "No issue", "Null terminator missing", "Type mismatch"] },
-      { id: 16, question: "What is the behavior of this loop?", code: "int i = 0; while(i < 5) { i = i + 1; if(i == 3) printf(\"%d\", i); }", options: ["Prints 3", "Infinite loop", "Prints nothing", "Prints 1 2 3 4 5"] },
-      { id: 17, question: "What does this macro expand to?", code: "#define SQR(x) x*x; printf(\"%d\", SQR(2+1));", options: ["9", "6", "5", "Compile error"] },
-      { id: 18, question: "What will be printed?", code: "int arr[] = {10, 20, 30, 40}; printf(\"%d\", *arr + 2);", options: ["12", "20", "10", "30"] },
-      { id: 19, question: "What is the behavior of this program?", code: "int i = 0; for(printf(\"A\"); i < 2; printf(\"B\"), i++) {}", options: ["Prints ABAB", "Prints AABB", "Infinite A", "Compile error"] },
-      { id: 20, question: "What happens when this code executes?", code: "int a = 3; int b = sizeof(a++); printf(\"%d %d\", a, b);", options: ["3 4", "4 4", "3 2", "Undefined"] }
+      { id: 11, question: "The following code uses a macro that takes an expression and a function call with side effects. What is the behavior when the macro is invoked as shown?", code: "#include <stdio.h>\n#define APPLY(f, x)  (f)((x), (x))\nint side(int *p, int *q) { return (*p)++ + (*q)++; }\nint main(void) {\n    int v = 1;\n    printf(\"%d\\n\", APPLY(side, &v));\n    printf(\"%d\\n\", v);\n    return 0;\n}", options: ["Prints 2 then 3 (v becomes 3)", "Prints 2 then 2 (v becomes 2)", "Undefined behavior", "Unspecified: may print 2 then 2 or 2 then 3"] },
+      { id: 12, question: "The code below uses restrict and passes the same pointer twice. What does the C standard say about the behavior?", code: "#include <stdio.h>\nvoid add(int n, int * restrict a, int * restrict b) {\n    for (int i = 0; i < n; i++)\n        a[i] += b[i];\n}\nint main(void) {\n    int x[] = {1, 2, 3};\n    add(3, x, x);\n    for (int i = 0; i < 3; i++) printf(\"%d \", x[i]);\n    return 0;\n}", options: ["Prints 2 4 6 (well-defined, restrict ignored when same pointer)", "Prints 1 2 3 (no modification)", "Undefined behavior", "Implementation-defined"] },
+      { id: 13, question: "The following fragment uses volatile and an expression that reads the same volatile object twice. What can be said about the result and optimization?", code: "#include <stdio.h>\nvolatile int flag = 0;\nint main(void) {\n    int x = flag + flag;\n    (void)x;\n    return 0;\n}", options: ["x is always 0; compiler may optimize to a single read of flag", "x is always 0; compiler must perform two reads of flag", "Unspecified whether one or two reads occur; x may be 0 or 2*flag", "Undefined behavior"] },
+      { id: 14, question: "What is the behavior of this program regarding evaluation order and side effects?", code: "#include <stdio.h>\nint f(int *a, int *b) { (*a)++; return *b; }\nint main(void) {\n    int x = 1, y = 2;\n    int z = f(&x, &y) + f(&y, &x);\n    printf(\"%d %d %d\\n\", x, y, z);\n    return 0;\n}", options: ["x=2, y=2, z=4 (order of f calls unspecified but result deterministic)", "x=2, y=2, z=3", "Undefined behavior", "Unspecified: multiple outcomes possible for x, y, z"] },
+      { id: 15, question: "The code uses a multi-level pointer and const in different positions. Which option correctly describes the relationship of p and what can be modified?", code: "#include <stdio.h>\nint main(void) {\n    int a = 10, b = 20;\n    int *pa = &a, *pb = &b;\n    int * const * p = &pa;\n    *p = &b;\n    **p = 30;\n    printf(\"%d %d\\n\", a, b);\n    return 0;\n}", options: ["Compiles; prints 10 30 (p is pointer-to-const-pointer-to-int, *p not modifiable)", "Compile error: cannot assign &b to *p", "Compiles; prints 10 20 (**p modifies b)", "Undefined behavior"] },
+      { id: 16, question: "The following code returns a pointer to a local array. What is the behavior?", code: "#include <stdio.h>\nchar *get_str(void) {\n    char buf[] = \"hello\";\n    return buf;\n}\nint main(void) {\n    char *p = get_str();\n    printf(\"%s\\n\", p);\n    return 0;\n}", options: ["Prints \"hello\" (lifetime extended for printf)", "Undefined behavior", "May print garbage or \"hello\"; unspecified", "Compile error (returning address of local)"] },
+      { id: 17, question: "The expression involves integer promotion and mixed signed/unsigned operands. What is the type and value of the comparison?", code: "#include <stdio.h>\n#include <limits.h>\nint main(void) {\n    int i = -1;\n    unsigned u = 1;\n    if (i < u)\n        printf(\"less\");\n    else\n        printf(\"not less\");\n    return 0;\n}", options: ["Prints \"less\" (signed comparison)", "Prints \"not less\"", "Implementation-defined", "Undefined behavior"] },
+      { id: 18, question: "The macro is invoked with an argument that has a side effect. What is the output?", code: "#include <stdio.h>\n#define M(x)  ((x) + (x))\nint main(void) {\n    int i = 0;\n    printf(\"%d\\n\", M(i++) + M(i++));\n    return 0;\n}", options: ["0 (each i++ evaluated once in each M)", "2", "Undefined behavior", "Unspecified (one of several integer values)"] },
+      { id: 19, question: "What happens if the shift count is negative or >= width of promoted type?", code: "#include <stdio.h>\nint main(void) {\n    int x = 1;\n    int y = x >> -1;\n    int z = x >> 32;\n    return 0;\n}", options: ["Undefined behavior", "y and z are 0", "Implementation-defined", "Compile error"] },
+      { id: 20, question: "The function is called with overlapping arrays (same base). What is the behavior?", code: "#include <stdio.h>\nvoid copy(int n, int *dst, const int *src) {\n    for (int i = 0; i < n; i++)\n        dst[i] = src[i];\n}\nint main(void) {\n    int a[] = {1, 2, 3, 4, 5};\n    copy(5, a + 1, a);\n    for (int i = 0; i < 5; i++) printf(\"%d \", a[i]);\n    return 0;\n}", options: ["Prints 1 1 2 3 4 (well-defined copy that propagates first element)", "Prints 1 1 1 1 1", "Undefined behavior (overlapping copy)", "Implementation-defined"] }
     ],
     cpp: [
       { id: 1, question: "What is the output of the following code?", code: "int a = 5;\ncout << a++ << \" \" << ++a;", options: ["5 6", "5 7", "6 6", "6 7"] },
@@ -312,16 +334,16 @@ const CodeWarData = {
       { id: 8, question: "Which function cannot be virtual?", code: "", options: ["Destructor", "Constructor", "Member function", "Inline function"] },
       { id: 9, question: "What happens if delete is not used for dynamically allocated memory?", code: "", options: ["Compile error", "Runtime error", "Memory leak", "Program stops"] },
       { id: 10, question: "Output of the program?", code: "int a = 5;\nint *p = &a;\n*p = 10;\ncout << a;", options: ["5", "10", "Garbage", "Error"] },
-      { id: 11, question: "Why is vector faster than list for random access?", code: "", options: ["Uses stack", "Contiguous memory", "Uses pointers", "Uses recursion"] },
-      { id: 12, question: "What is the use of mutable keyword?", code: "", options: ["Change class design", "Modify data in const function", "Avoid constructor", "Speed improvement"] },
-      { id: 13, question: "What will be the output?", code: "int a = 10;\nconst int *p = &a;\na = 20;\ncout << *p;", options: ["10", "20", "Error", "Undefined"] },
-      { id: 14, question: "Which supports runtime polymorphism?", code: "", options: ["Overloading", "Templates", "Virtual functions", "Inline"] },
-      { id: 15, question: "Output of the code?", code: "int arr[5];\ncout << sizeof(arr)/sizeof(arr[0]);", options: ["4", "5", "8", "Depends"] },
-      { id: 16, question: "What is dangling pointer?", code: "", options: ["Null pointer", "Pointer to constant", "Pointer to deallocated memory", "Wild pointer"] },
-      { id: 17, question: "What happens when delete[] is replaced by delete?", code: "", options: ["Safe", "Only memory leak", "Undefined behavior", "No effect"] },
-      { id: 18, question: "What will be output?", code: "int a = 5;\nint b = a;\nb = 10;\ncout << a;", options: ["5", "10", "Garbage", "Error"] },
-      { id: 19, question: "Why explicit constructor is used?", code: "", options: ["Speed", "Avoid implicit conversion", "Inheritance", "Polymorphism"] },
-      { id: 20, question: "What is Rule of Zero?", code: "", options: ["No constructors", "No pointers", "Compiler manages resources", "No class"] }
+      { id: 11, question: "Order of evaluation of operands of << is unspecified. What is the result?", code: "int i = 0;\nstd::cout << i++ << i++ << i++;", options: ["0 1 2", "2 1 0", "Undefined behavior", "Unspecified (one of the above)"] },
+      { id: 12, question: "Base destructor is not virtual. What happens when delete is called on a base pointer to a derived object?", code: "Base* p = new Derived();\ndelete p;", options: ["Only base destructor runs; undefined behavior", "Both destructors run", "Compile error", "Only derived destructor runs"] },
+      { id: 13, question: "What does std::move do?", code: "std::string s = \"hi\";\nauto t = std::move(s);", options: ["Copies s to t", "Casts to rvalue; move ctor/assignment may be used", "Swaps s and t", "Clears s"] },
+      { id: 14, question: "Lambda captures by reference. What can go wrong?", code: "std::function<int()> f;\n{ int x = 42; f = [&x](){ return x; }; }\nint r = f();", options: ["r is 42", "Undefined behavior (dangling reference)", "Compile error", "r is 0"] },
+      { id: 15, question: "Destructor throws during stack unwinding. What happens?", code: "struct S { ~S(){ throw 1; } };\ntry { S s; throw 0; } catch(int e){ std::cout << e; }", options: ["0", "1", "01 or 10", "std::terminate() is called"] },
+      { id: 16, question: "Two TUs define the same inline variable with different values. Result?", code: "// TU1: inline int x=1;  TU2: inline int x=2;", options: ["ODR violation; undefined behavior", "Linker picks one", "Compile error", "Each TU sees its own x"] },
+      { id: 17, question: "What is the type of auto?", code: "int arr[3] = {1,2,3};\nauto x = arr;", options: ["int[3]", "int*", "int(&)[3]", "std::array<int,3>"] },
+      { id: 18, question: "Modifying vector while iterating with for (auto it = v.begin(); it != v.end(); ++it) if (*it==2) v.erase(it);", code: "", options: ["Removes 2; well-defined", "Undefined behavior (iterator invalidation)", "Removes all", "Infinite loop"] },
+      { id: 19, question: "What value category does the expression f() have in: int& f(); f() = 10;?", code: "", options: ["lvalue", "xvalue", "prvalue", "Compile error"] },
+      { id: 20, question: "Template class F<T> instantiated in two TUs with same T; each TU has a different definition of F<T>::v. Result?", code: "", options: ["ODR requires one definition; violation", "Two distinct types", "Linker error", "Unspecified"] }
     ],
     java: [
       { id: 1, question: "Which method is the starting point of a Java program?", code: "", options: ["start()", "main()", "run()", "init()"] },
@@ -334,16 +356,16 @@ const CodeWarData = {
       { id: 8, question: "Which access modifier allows access only within the same package?", code: "", options: ["private", "protected", "default", "public"] },
       { id: 9, question: "What will be the output? (Logic)", code: "int a = 5;\nSystem.out.println(a++ + ++a);", options: ["10", "11", "12", "13"] },
       { id: 10, question: "Which memory area stores objects in Java?", code: "", options: ["Stack", "Heap", "Method area", "CPU register"] },
-      { id: 11, question: "What will be the output? (Logic)", code: "int i = 1;\nwhile(i <= 3) {\n    System.out.print(i++);\n}", options: ["123", "012", "Infinite loop", "321"] },
-      { id: 12, question: "What will be the output? (Logic)", code: "System.out.println(5 / 2);", options: ["2.5", "2", "3", "Compile-time error"] },
-      { id: 13, question: "What will be the output? (Logic)", code: "int x = 10;\nif(x++ > 10)\n    System.out.print(\"A\");\nelse\n    System.out.print(\"B\");", options: ["A", "B", "AB", "Compile-time error"] },
-      { id: 14, question: "Which feature supports runtime polymorphism?", code: "", options: ["Method overloading", "Method overriding", "Encapsulation", "Abstraction"] },
-      { id: 15, question: "What will be the output? (Logic)", code: "int a = 10;\nint b = 20;\nSystem.out.println(a & b);", options: ["0", "20", "30", "10"] },
-      { id: 16, question: "Which of the following allows multiple inheritance in Java?", code: "", options: ["Class", "Abstract class", "Interface", "Package"] },
-      { id: 17, question: "What will be the output? (Logic)", code: "int x = 0;\nfor(; x < 3; x++);\nSystem.out.print(x);", options: ["0", "2", "3", "Compile-time error"] },
-      { id: 18, question: "Which exception occurs when dividing by zero?", code: "", options: ["IOException", "NullPointerException", "ArithmeticException", "NumberFormatException"] },
-      { id: 19, question: "Which keyword refers to the current object?", code: "", options: ["self", "this", "super", "current"] },
-      { id: 20, question: "What will be the output?", code: "int x = 5;\nSystem.out.println(x++ + x++ + ++x);", options: ["17", "18", "19", "20"] }
+      { id: 11, question: "Operands of + are evaluated left-to-right. What is printed?", code: "int i = 0;\nSystem.out.println(i++ + i++ + i++);", options: ["0 1 2", "2 1 0", "3", "Unspecified"] },
+      { id: 12, question: "At runtime, what happens to the generic type in List<String>?", code: "List<String> list = new ArrayList<>();", options: ["Type erasure; only List remains", "Retained for reflection", "Compile error", "Runtime type is ArrayList<String>"] },
+      { id: 13, question: "a.equals(b) is true but a.hashCode() != b.hashCode(). Used as HashMap keys?", code: "", options: ["Breaks contract; wrong or inconsistent behavior", "HashMap throws", "Only first stored", "Compile error"] },
+      { id: 14, question: "String a = new String(\"hi\"); String b = \"hi\"; What is a==b and a.intern()==b?", code: "", options: ["false then true", "true then true", "false then false", "true then false"] },
+      { id: 15, question: "A method throws a checked exception. What must the caller do?", code: "void f() throws IOException { }", options: ["Handle with try-catch or declare throws", "Nothing", "Use unchecked only", "Compile error"] },
+      { id: 16, question: "Initial value of int[] arr = new int[5]; arr[0]?", code: "", options: ["0", "null", "Garbage", "Undefined"] },
+      { id: 17, question: "Main thread exits while worker threads still run. What happens?", code: "", options: ["JVM may exit; non-daemon threads keep it alive", "JVM always waits for all threads", "Undefined", "Deadlock"] },
+      { id: 18, question: "Can a static method be overridden? class A { static void m(){} } class B extends A { static void m(){} }", code: "", options: ["No; B.m() hides A.m()", "Yes", "Only if synchronized", "Compile error"] },
+      { id: 19, question: "Integer a=127; Integer b=127; a==b? Integer c=128; Integer d=128; c==d?", code: "", options: ["true then false", "true then true", "false then false", "false then true"] },
+      { id: 20, question: "What does finalize() guarantee?", code: "protected void finalize() { }", options: ["Nothing; deprecated; no guarantee when/if it runs", "Runs before GC reclaims", "Runs exactly once", "Runs when no refs remain"] }
     ],
     python: [
       { id: 1, question: "Which data type is immutable?", code: "", options: ["List", "Set", "Dictionary", "Tuple"] },
@@ -356,16 +378,16 @@ const CodeWarData = {
       { id: 8, question: "What does this return?", code: "def test():\n    return\nprint(test())", options: ["0", "False", "None", "Error"] },
       { id: 9, question: "What will be printed?", code: "X = \"Python\"\nprint(x[10:])", options: ["Error", "Python", "Empty string", "None"] },
       { id: 10, question: "What happens here?", code: "a = {1, 2, 3}\na.add(3)\nprint(len(a))", options: ["2", "3", "4", "Error"] },
-      { id: 11, question: "Output?", code: "print([i for i in range(3)])", options: ["[1, 2, 3]", "[0, 1, 2]", "[0, 1, 2, 3]", "Error"] },
-      { id: 12, question: "Output?", code: "X = 10\ndef fun():\n    global x\n    X = x + 5\nfun()\nprint(x)", options: ["10", "5", "15", "Error"] },
-      { id: 13, question: "What does pop() do?", code: "", options: ["Adds element", "Removes last element", "Sorts list", "Copies list"] },
-      { id: 14, question: "Which keyword is used to handle exceptions?", code: "", options: ["error", "try", "handle", "catch"] },
-      { id: 15, question: "Which operator is used for exponentiation?", code: "", options: ["^", "**", "//", "%"] },
-      { id: 16, question: "What does the continue statement do in a loop?", code: "", options: ["Terminates the loop completely", "Skips the current iteration and moves to the next iteration", "Exits the program", "Pauses the loop execution"] },
-      { id: 17, question: "Output?", code: "print(\"Python\"[1:4])", options: ["Pyt", "yth", "tho", "hon"] },
-      { id: 18, question: "Output of the code?", code: "def add(a, b=2, c=3):\n    return a + b + c\nprint(add(1, c=5))", options: ["6", "8", "Error", "10"] },
-      { id: 19, question: "Output of the code", code: "print(\"5\" + \"5\")", options: ["10", "55", "Error", "None"] },
-      { id: 20, question: "What is the output?", code: "print(type(lambda x: x))", options: ["function", "method", "lambda", "<class 'function'>"] }
+      { id: 11, question: "What is the output? (Mutable default argument.)", code: "def f(l=[]):\n    l.append(1)\n    return l\nprint(f(), f())", options: ["[1] [1]", "[1] [1, 1]", "[1, 1] [1, 1]", "Error"] },
+      { id: 12, question: "What does the GIL imply for CPU-bound threads?", code: "", options: ["Only one thread executes Python bytecode at a time", "No locking; full parallelism", "Only affects I/O", "GIL is per-process"] },
+      { id: 13, question: "What is MRO used for in class D(B, C)?", code: "class A: pass\nclass B(A): pass\nclass C(A): pass\nclass D(B,C): pass", options: ["Order of base class search for attribute lookup", "Only multiple inheritance", "Same as C3 linearization", "All of the above"] },
+      { id: 14, question: "a=256; b=256; a is b? c=257; d=257; c is d?", code: "", options: ["True then False", "True then True", "False then False", "False then True"] },
+      { id: 15, question: "What is the type of (1)?", code: "x = (1)", options: ["tuple", "int", "Syntax error", "NoneType"] },
+      { id: 16, question: "A descriptor defines __get__ and __set__. How is it used?", code: "", options: ["As class attribute to customize instance attribute access", "Only for methods", "As decorator", "Context managers only"] },
+      { id: 17, question: "Modify a dict while iterating: for k in d: d[k*2]=k. Result?", code: "", options: ["RuntimeError or undefined behavior", "Adds new keys safely", "Skips new keys", "Iteration sees new keys"] },
+      { id: 18, question: "What do *args and **kwargs capture?", code: "def f(*args, **kwargs): ...", options: ["args=tuple of extra positional, kwargs=dict of keyword args", "Only keyword args", "Both required together", "Version-dependent"] },
+      { id: 19, question: "What does [g() for g in [lambda: i for i in range(3)]] produce?", code: "", options: ["[0, 1, 2]", "[2, 2, 2] (closure over i)", "[0, 0, 0]", "Error"] },
+      { id: 20, question: "What does __slots__ = ('x',) do?", code: "class C:\n    __slots__ = ('x',)", options: ["Restricts instance attrs; can save memory", "Makes class abstract", "Prevents inheritance", "Weak refs only"] }
     ]
   },
   debug: {
@@ -568,33 +590,33 @@ print(result)`, hint: "ZeroDivisionError: handle empty list case" }
   ps: [
     {
       id: 1,
-      title: "Sum of Two Numbers",
-      description: "Write a function that takes two numbers as input and returns their sum.\n\nInput: Two integers a and b\nOutput: Return a + b\n\nExample:\nInput: a = 5, b = 3\nOutput: 8",
-      constraints: "1 <= a, b <= 1000"
+      title: "Binary Search (First Occurrence)",
+      description: "Implement binary search on a sorted array that may contain duplicates. Return the 0-based index of the FIRST occurrence of target; if absent return -1. You must achieve O(log n) time.\n\nInput: n, then n integers (non-decreasing), then target.\nOutput: Index of first occurrence or -1.\n\nExample: 6, 1 2 2 2 3 4, target 2 → Output: 1 (first 2).\nExample: 4, 2 4 6 8, target 5 → Output: -1",
+      constraints: "1 <= n <= 10^5, -10^9 <= values <= 10^9, solution must be O(log n)"
     },
     {
       id: 2,
-      title: "Star Pattern",
-      description: "Print a right-angled triangle pattern of stars.\n\nInput: An integer n representing the number of rows\nOutput: Print n lines, where line i contains i stars\n\nExample:\nInput: 5\nOutput:\n*\n**\n***\n****\n*****",
-      constraints: "1 <= n <= 20"
+      title: "Longest Subarray with Sum at Most K",
+      description: "Given an array of integers (may contain negatives and zeros) and integer K, find the length of the longest contiguous subarray whose sum is at most K. If no such subarray exists (e.g. all elements positive and K < min element), return 0. Handle empty subarray: length 0 is allowed.\n\nInput: n, n integers, then K.\nOutput: Length (integer).\n\nExample: 6, 1 -2 3 4 -1 2, K=5 → 4. Example: 3, 2 2 2, K=1 → 0.",
+      constraints: "1 <= n <= 5000, -10^6 <= K <= 10^6, O(n) or O(n^2) acceptable"
     },
     {
       id: 3,
-      title: "Find Maximum",
-      description: "Write a function to find the maximum of three numbers.\n\nInput: Three integers a, b, c\nOutput: Return the maximum of the three numbers\n\nExample:\nInput: a = 5, b = 10, c = 3\nOutput: 10",
-      constraints: "-1000 <= a, b, c <= 1000"
+      title: "Valid Parentheses (Strict)",
+      description: "Given a string s containing only '(', ')', '{', '}', '[', ']', determine if it is valid. Valid = every open bracket is closed by the same type in the correct order, and no extra characters. Empty string is invalid for this problem.\n\nInput: Single string s.\nOutput: Exactly \"Valid\" or \"Invalid\".\n\nExamples: () → Valid; ([)] → Invalid; {[]} → Valid; \"\" → Invalid.",
+      constraints: "1 <= length(s) <= 10^4, use a stack or equivalent O(n) approach"
     },
     {
       id: 4,
-      title: "Factorial",
-      description: "Write a function to calculate the factorial of a number.\n\nInput: An integer n\nOutput: Return n! (factorial of n)\n\nExample:\nInput: 5\nOutput: 120\n\nNote: 0! = 1",
-      constraints: "0 <= n <= 10"
+      title: "Merge Two Sorted Arrays (In-Place Style)",
+      description: "Given two sorted arrays A and B, merge them into one sorted array. You must use two-pointer (or two-index) technique; do not concatenate and sort. Output space-separated merged sequence.\n\nInput: lenA, elements of A, lenB, elements of B.\nOutput: Single line of space-separated integers in non-decreasing order.\n\nExample: A=[1,3,5], B=[2,4,6] → 1 2 3 4 5 6. A=[1], B=[1] → 1 1.",
+      constraints: "1 <= |A|, |B| <= 5000, O(|A|+|B|) time required"
     },
     {
       id: 5,
-      title: "Check Even or Odd",
-      description: "Write a function that checks if a number is even or odd.\n\nInput: An integer n\nOutput: Return \"Even\" if n is even, \"Odd\" if n is odd\n\nExample:\nInput: 5\nOutput: Odd\n\nInput: 4\nOutput: Even",
-      constraints: "-1000 <= n <= 1000"
+      title: "Spiral Order of Matrix (Boundary Traversal)",
+      description: "Given an R x C matrix, output all elements in spiral order: top-row left-to-right, right column top-to-bottom, bottom row right-to-left, left column bottom-to-top, then repeat for inner rectangle. Handle 1xN and Nx1 matrices correctly.\n\nInput: R, C, then R*C integers row-wise.\nOutput: Space-separated spiral order.\n\nExample: 2 3, 1 2 3 4 5 6 → 1 2 3 6 5 4. Example: 3 3, 1..9 → 1 2 3 6 9 8 7 4 5.",
+      constraints: "1 <= R, C <= 50, no extra trailing space"
     }
   ]
 };

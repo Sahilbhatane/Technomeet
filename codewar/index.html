@@ -5,8 +5,46 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CodeWar Competition Platform</title>
   <link rel="stylesheet" href="css/codewar.css">
+  <style>
+    /* Rules widget: always top-right, panel only on hover */
+    .rules-widget {
+      position: fixed !important;
+      top: 12px !important;
+      left: 12px !important;
+      z-index: 9999 !important;
+    }
+    .rules-widget-panel {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    .rules-widget:hover .rules-widget-panel {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+  </style>
 </head>
 <body>
+  <div class="rules-widget" data-round="home">
+    <span class="rules-widget-icon" aria-label="Rules">📋</span>
+    <div class="rules-widget-panel">
+      <h4>General rules</h4>
+      <ul>
+        <li>Rounds in order: MCQ → Debug → PS. Complete each to unlock the next.</li>
+        <li>Timer runs continuously; it does not reset on refresh.</li>
+        <li>Avoid switching tabs, copy-paste, or external sites; penalties may apply.</li>
+        <li>Meet minimum score in MCQ to advance; same for cumulative (MCQ + Debug) before PS.</li>
+      </ul>
+      <div class="rules-round-section">
+        <h4>Home</h4>
+        <ul>
+          <li>Enter your registration code to start.</li>
+          <li>After auth you can start Round 1 (MCQ).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
   <div class="container">
     <div class="header">
       <h1>CodeWar Competition</h1>
@@ -40,7 +78,7 @@
           <!-- MCQ Round Card -->
           <div class="score-card" id="mcq-card">
             <h3>Round 1: MCQ Quiz</h3>
-            <p>20 questions, 30 minutes</p>
+            <p>20 questions (10 easy + 10 advanced), 25 minutes</p>
             <div id="mcq-score" style="margin: 10px 0; color: var(--accent-green); display: none;"></div>
             <button id="mcq-btn" class="btn mt-20" onclick="navigateToRound('mcq')">Start MCQ Round</button>
           </div>
@@ -70,6 +108,10 @@
         </div>
       </div>
     </div>
+
+    <p style="text-align: center; margin-top: 40px; font-size: 0.85em;">
+      <a href="collect_results.html" style="color: var(--text-secondary);">Invigilator: Collect all result files</a>
+    </p>
   </div>
 
   <!-- Error logging for automated testing -->

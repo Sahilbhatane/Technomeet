@@ -589,3 +589,81 @@ body {
 .hidden {
   display: none;
 }
+
+/* Rules widget - hover in top-left corner */
+.rules-widget {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 9999;
+  font-size: 1.1em;
+}
+
+.rules-widget-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--accent-cyan);
+  border-radius: 50%;
+  color: var(--accent-cyan);
+  cursor: help;
+  transition: background 0.2s, color 0.2s;
+}
+
+.rules-widget-icon:hover {
+  background: var(--accent-cyan);
+  color: var(--bg-primary);
+}
+
+.rules-widget-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  width: 320px;
+  max-width: calc(100vw - 24px);
+  padding: 16px;
+  background: var(--bg-secondary);
+  border: 2px solid var(--border-color);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  font-size: 0.9em;
+  line-height: 1.5;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.2s, visibility 0.2s;
+}
+
+.rules-widget:hover .rules-widget-panel {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+}
+
+.rules-widget-panel h4 {
+  color: var(--accent-cyan);
+  margin: 0 0 8px 0;
+  font-size: 0.95em;
+  border-bottom: 1px solid var(--border-color);
+  padding-bottom: 4px;
+}
+
+.rules-widget-panel h4 + ul {
+  margin: 0 0 14px 0;
+  padding-left: 18px;
+  color: var(--text-secondary);
+}
+
+.rules-widget-panel ul li {
+  margin-bottom: 4px;
+}
+
+.rules-widget-panel .rules-round-section {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border-color);
+}

@@ -5,13 +5,52 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>MCQ Round - CodeWar</title>
   <link rel="stylesheet" href="css/codewar.css">
+  <style>
+    /* Rules widget: always top-right, panel only on hover */
+    .rules-widget {
+      position: fixed !important;
+      top: 12px !important;
+      left: 12px !important;
+      z-index: 9999 !important;
+    }
+    .rules-widget-panel {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    .rules-widget:hover .rules-widget-panel {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
+  </style>
 </head>
 <body>
+  <div class="rules-widget" data-round="mcq">
+    <span class="rules-widget-icon" aria-label="Rules">📋</span>
+    <div class="rules-widget-panel">
+      <h4>General rules</h4>
+      <ul>
+        <li>Rounds: MCQ → Debug → PS. Timer does not reset on refresh.</li>
+        <li>Avoid tab switch, copy-paste, or external sites; penalties may apply.</li>
+      </ul>
+      <div class="rules-round-section">
+        <h4>This round: MCQ</h4>
+        <ul>
+          <li>20 questions (10 easy + 10 advanced), 25 minutes.</li>
+          <li>Choose one language; you can change it up to 2 times.</li>
+          <li>Single correct answer per question (A/B/C/D).</li>
+          <li>Answers are auto-saved. Submit before time runs out.</li>
+          <li>Quiz auto-submits when the timer ends.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
   <div class="container">
     <div class="header">
       <h1>Round 1: MCQ Quiz</h1>
       <div class="question-header">
-        <span class="timer-display" id="timer">30:00</span>
+        <span class="timer-display" id="timer">25:00</span>
         <span class="question-number">Question <span id="current-q">1</span> of <span id="total-q">-</span></span>
       </div>
     </div>

@@ -6,6 +6,23 @@
   <title>Results - CodeWar</title>
   <link rel="stylesheet" href="css/codewar.css">
   <style>
+    /* Rules widget: always top-right, panel only on hover */
+    .rules-widget {
+      position: fixed !important;
+      top: 12px !important;
+      left: 12px !important;
+      z-index: 9999 !important;
+    }
+    .rules-widget-panel {
+      opacity: 0 !important;
+      visibility: hidden !important;
+      pointer-events: none !important;
+    }
+    .rules-widget:hover .rules-widget-panel {
+      opacity: 1 !important;
+      visibility: visible !important;
+      pointer-events: auto !important;
+    }
     .score-breakdown-detail {
       font-size: 0.8em;
       color: var(--text-secondary);
@@ -48,6 +65,22 @@
   </style>
 </head>
 <body>
+  <div class="rules-widget" data-round="results">
+    <span class="rules-widget-icon" aria-label="Rules">📋</span>
+    <div class="rules-widget-panel">
+      <h4>General rules</h4>
+      <ul>
+        <li>Rounds: MCQ → Debug → PS. Scores and time are final after submission.</li>
+      </ul>
+      <div class="rules-round-section">
+        <h4>Results</h4>
+        <ul>
+          <li>Your result file is auto-downloaded; submit it to the invigilator if required.</li>
+          <li>You can download again with the button below.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
   <div class="container">
     <div class="header">
       <h1>Competition Results</h1>
@@ -122,7 +155,8 @@
       </div>
 
       <div style="text-align: center; margin-top: 40px;">
-        <button class="btn" onclick="downloadResults()">Download Results</button>
+        <p style="font-size: 0.9em; color: var(--text-secondary); margin-bottom: 12px;">Your result file was auto-downloaded. Submit it to the invigilator or keep a copy.</p>
+        <button class="btn" onclick="downloadResults()">Download Results Again</button>
         <button class="btn btn-secondary" onclick="window.location.href='index.html'">Back to Home</button>
       </div>
     </div>
@@ -141,6 +175,8 @@
         return;
       }
       displayResults();
+      // Auto-download result file once when user lands on results (offline lab collection)
+      autoDownloadResultsOnce();
     });
 
     function formatTime(seconds) {
@@ -279,7 +315,7 @@
       }
     }
 
-    function downloadResults() {
+    function buildResultsPayload() {
       const results = {
         registrationCode: StorageManager.getRegistrationCode(),
         totalScore: 0,
@@ -300,29 +336,60 @@
         },
         timestamp: new Date().toISOString()
       };
-
-      // Calculate totals
-      if (results.rounds.mcq && results.rounds.mcq.totalScore) {
-        results.totalScore += results.rounds.mcq.totalScore;
+      if (results.rounds.mcq && (results.rounds.mcq.totalScore != null || results.rounds.mcq.score != null)) {
+        results.totalScore += results.rounds.mcq.totalScore || results.rounds.mcq.score || 0;
         results.totalTimeUsed += results.rounds.mcq.timeUsed || 0;
       }
-      if (results.rounds.debug && results.rounds.debug.totalScore) {
-        results.totalScore += results.rounds.debug.totalScore;
+      if (results.rounds.debug && (results.rounds.debug.totalScore != null || results.rounds.debug.score != null)) {
+        results.totalScore += results.rounds.debug.totalScore || results.rounds.debug.score || 0;
         results.totalTimeUsed += results.rounds.debug.timeUsed || 0;
       }
-      if (results.rounds.ps && results.rounds.ps.totalScore) {
-        results.totalScore += results.rounds.ps.totalScore;
+      if (results.rounds.ps && (results.rounds.ps.totalScore != null || results.rounds.ps.score != null)) {
+        results.totalScore += results.rounds.ps.totalScore || results.rounds.ps.score || 0;
         results.totalTimeUsed += results.rounds.ps.timeUsed || 0;
       }
+      return results;
+    }
 
+    function getResultsFileName() {
+      const code = (StorageManager.getRegistrationCode() || 'unknown').replace(/[^a-zA-Z0-9-_]/g, '_');
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      return `codewar-results-${code}-${ts}.json`;
+    }
+
+    function downloadResults() {
+      const results = buildResultsPayload();
       const dataStr = JSON.stringify(results, null, 2);
       const dataBlob = new Blob([dataStr], { type: 'application/json' });
       const url = URL.createObjectURL(dataBlob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `codewar-results-${StorageManager.getRegistrationCode()}.json`;
+      link.download = getResultsFileName();
       link.click();
       URL.revokeObjectURL(url);
+    }
+
+    function autoDownloadResultsOnce() {
+      if (typeof StorageManager === 'undefined') return;
+      const payload = buildResultsPayload();
+      const hasData = payload.totalScore > 0 || (payload.rounds.mcq && (payload.rounds.mcq.totalScore != null || payload.rounds.mcq.score != null)) ||
+        (payload.rounds.debug && (payload.rounds.debug.totalScore != null || payload.rounds.debug.score != null)) ||
+        (payload.rounds.ps && (payload.rounds.ps.totalScore != null || payload.rounds.ps.score != null));
+      if (!hasData) return;
+      try {
+        if (sessionStorage.getItem('codewar_results_auto_downloaded')) return;
+        sessionStorage.setItem('codewar_results_auto_downloaded', '1');
+        const dataStr = JSON.stringify(payload, null, 2);
+        const dataBlob = new Blob([dataStr], { type: 'application/json' });
+        const url = URL.createObjectURL(dataBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = getResultsFileName();
+        link.click();
+        URL.revokeObjectURL(url);
+      } catch (e) {
+        console.warn('[Results] Auto-download failed:', e);
+      }
     }
   </script>
 </body>

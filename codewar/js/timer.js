@@ -7,7 +7,7 @@ const EXAM_DURATION_MINUTES = 180; // 3 hours total
 
 // Round durations in MINUTES
 const ROUND_DURATIONS = {
-  mcq: 30,    // 30 minutes
+  mcq: 25,    // 25 minutes
   debug: 45,  // 45 minutes
   ps: 60      // 60 minutes
 };
